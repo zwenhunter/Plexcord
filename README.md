@@ -4,12 +4,15 @@
 
 **Taking Discord to the Next Level!**
 
-[![GitHub Sponsors](https://img.shields.io/github/sponsors/MutanPlex?style=for-the-badge&logo=github&color=pink)](https://github.com/sponsors/MutanPlex)
 [![Discord](https://img.shields.io/discord/1342668210331324476?style=for-the-badge&logo=discord&logoColor=white&label=Discord)](https://discord.gg/HQGYXm5XSh)
-[![GitHub Stars](https://img.shields.io/github/stars/MutanPlex/Plexcord?style=for-the-badge&logo=github)](https://github.com/MutanPlex/Plexcord/stargazers)
-[![License](https://img.shields.io/github/license/MutanPlex/Plexcord?style=for-the-badge)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/zwenhunter/Plexcord?style=for-the-badge&logo=github)](https://github.com/zwenhunter/Plexcord/stargazers)
+[![License](https://img.shields.io/github/license/zwenhunter/Plexcord?style=for-the-badge)](LICENSE)
 
 A powerful, lightweight Discord client modification that enhances your Discord experience with 300+ built-in plugins, custom themes, and privacy-focused features.
+
+> **Bu fork / This fork:** Orjinal [MutanPlex/Plexcord](https://github.com/MutanPlex/Plexcord) projesinin fork'udur ve ek olarak **FakeMuteAndDeafen** eklentisini içerir — kendinizi sahte olarak susturup sağırlaştırabilirsiniz, bu sırada konuşmaya ve duymaya devam edebilirsiniz.
+>
+> **This fork** of [MutanPlex/Plexcord](https://github.com/MutanPlex/Plexcord) additionally includes the **FakeMuteAndDeafen** plugin — fake mute and fake deafen yourself while still being able to speak and hear.
 
 [Features](#features) • [Installation](#installation) • [Documentation](https://docs.plexcord.club) • [Support Server](https://discord.gg/HQGYXm5XSh) • [Contributing](CONTRIBUTING.md)
 
@@ -39,6 +42,7 @@ A powerful, lightweight Discord client modification that enhances your Discord e
     - 🔐 **PermissionsViewer** - View detailed permissions
     - ⌨️ **CustomCommands** - Create your own commands
     - 👁️ **ShowHiddenChannels** - See hidden channels
+    - 🗣️ **FakeMuteAndDeafen** - Fake mute/deafen yourself and keep talking (fork exclusive)
 - **Lightweight Performance**: Despite many plugins, remains fast and efficient
 
 ### 🎨 Customization
@@ -94,7 +98,7 @@ Then open [discord.com/app](https://discord.com/app). More details on the [downl
 For developers and advanced users. Requires [Node.js](https://nodejs.org) 22+, [pnpm](https://pnpm.io) and [Git](https://git-scm.com).
 
 ```sh
-git clone https://github.com/MutanPlex/Plexcord
+git clone https://github.com/zwenhunter/Plexcord
 cd Plexcord
 pnpm install --frozen-lockfile
 pnpm build        # desktop build (pnpm buildWeb for the browser build)
@@ -103,13 +107,9 @@ pnpm inject       # patches your Discord install with your build
 
 Use `pnpm watch` while developing. Plugin development guide: [docs.plexcord.club](https://docs.plexcord.club/docs/getting-started)
 
-## Support the Project
+## Fork
 
-If you enjoy using Plexcord, please consider supporting the development:
-
-[![Sponsor MutanPlex](https://img.shields.io/badge/Sponsor-MutanPlex-pink?style=for-the-badge&logo=github-sponsors)](https://github.com/sponsors/MutanPlex)
-
-Your support helps maintain and improve Plexcord!
+This is a community fork. Upstream project: [MutanPlex/Plexcord](https://github.com/MutanPlex/Plexcord). All credit for the original work goes to MutanPlex and contributors.
 
 ## 🌐 Join our Support/Community Server
 
@@ -119,11 +119,11 @@ Join our community for support, updates, and discussions:
 
 <div align="center">
 
-<a href="https://star-history.com/#MutanPlex/Plexcord&Timeline">
+<a href="https://star-history.com/#zwenhunter/Plexcord&Timeline">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=MutanPlex/Plexcord&type=Timeline&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=MutanPlex/Plexcord&type=Timeline" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=MutanPlex/Plexcord&type=Timeline" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=zwenhunter/Plexcord&type=Timeline&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=zwenhunter/Plexcord&type=Timeline" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=zwenhunter/Plexcord&type=Timeline" />
   </picture>
 </a>
 
@@ -155,8 +155,6 @@ However, Discord is generally indifferent about client modifications and there a
 
 <div align="center">
 
-**Made with ❤️ by [MutanPlex](https://github.com/MutanPlex) and [contributors](https://github.com/MutanPlex/Plexcord/graphs/contributors)**
-
-If you find Plexcord useful, please consider [sponsoring](https://github.com/sponsors/MutanPlex) ⭐
+**Made with ❤️ by [MutanPlex](https://github.com/MutanPlex) and [contributors](https://github.com/MutanPlex/Plexcord/graphs/contributors), forked and maintained by [zwenhunter](https://github.com/zwenhunter)**
 
 </div>
