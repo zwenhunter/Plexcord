@@ -111,6 +111,25 @@ Use `pnpm watch` while developing. Plugin development guide: [docs.plexcord.club
 
 This is a community fork. Upstream project: [MutanPlex/Plexcord](https://github.com/MutanPlex/Plexcord). All credit for the original work goes to MutanPlex and contributors.
 
+### FakeMuteAndDeafen — Fixes / Düzeltmeler
+
+Orijinal eklentide tespit edilip düzeltilen hatalar:
+
+| # | Hata | Düzeltme |
+|---|------|----------|
+| 1 | `authors: [Devs.TheArmagan]` — `TheArmagan` `Devs` içinde yok, `PcDevs` içinde (çalışma anında crash / build hatası) | `authors: [PcDevs.TheArmagan, PcDevs.MutanPlex]` yapıldı |
+| 2 | `Devs` import'u kullanılmıyordu (lint hatası) | Kaldırıldı, `PcDevs` import edildi |
+| 3 | `const toDisable = []` — TypeScript `never[]` olarak algılıyor, `tsc --noEmit` hatası veriyordu | `const toDisable: string[] = []` yazıldı |
+| 4 | `NotificationSettingsStore.getState()` tipli değil, `disabledSounds` üzerinde type hatası | `as { disabledSounds: string[] }` cast eklendi |
+| 5 | `catch (e)` — kullanılmayan `e` değişkeni (lint hatası) | `catch` olarak düzeltildi |
+| 6 | `Devs.Zwen` diye olmayan bir dev'e referans vardı, menü etiketleri "Zwen:..." önekliydi | Etiketler i18n'e taşındı (`Sahte Susturma` vb.), TR + tüm diller için çeviri eklendi |
+| 7 | Dosya JSX içerdiği halde `.ts` uzantılıydı | `.tsx` yapıldı |
+| 8 | `StateKeys` dizisi manuel `for` ile dönülüyordu | `for...of` ile temizlendi |
+| 9 | Repo'da hiç FakeMuteAndDeafen yoktu, plugin kaydı yoktu | `src/plugins/fakeMuteAndDeafen/` olarak eklendi, 22 dil dosyasına çeviri girdisi eklendi |
+| 10 | `t(plugin.fakeMuteAndDeafen.autoMute.description)` gibi key'ler locale dosyalarında eksikti | en-US, tr ve diğer 20 locale'e eklendi |
+
+Fixes made to the original plugin: wrong author constant (`Devs` → `PcDevs`), `never[]` type errors, missing i18n keys, `.tsx` extension, unused imports/catches, and full translation support for all 22 locales. All changes verified with `tsc --noEmit`, `oxlint` and a full `pnpm build`.
+
 ## 🌐 Join our Support/Community Server
 
 Join our community for support, updates, and discussions:
