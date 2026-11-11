@@ -1,0 +1,118 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import "./style.css";
+
+import { plugin, t } from "@api/i18n";
+import { InfoIcon } from "@components/Icons";
+import { Guild } from "@plexcord/discord-types";
+import { Devs, PcDevs } from "@utils/constants";
+import { openUserProfile } from "@utils/discord";
+import { classes } from "@utils/misc";
+import definePlugin, { StartAt } from "@utils/types";
+import { findByPropsLazy, findCssClassesLazy } from "@webpack";
+import { Parser, Tooltip, UserStore } from "@webpack/common";
+
+const AvatarStyles = findCssClassesLazy("avatar", "zalgo", "clickable");
+const GuildManager = findByPropsLazy("joinGuild");
+
+interface User {
+    id: string;
+    avatar: string;
+    global_name: string;
+    username: string;
+}
+
+function lurk(id: string) {
+    GuildManager.joinGuild(id, { lurker: true })
+        .then(() => { GuildManager.transitionToGuildSync(id); })
+        .catch(() => { throw new Error("Guild is not lurkable"); });
+}
+
+export default definePlugin({
+    name: "BetterInvites",
+    description: () => t(plugin.betterInvites.description),
+    authors: [Devs.iamme, PcDevs.MutanPlex, Devs.thororen],
+    tags: ["servers"],
+
+    patches: [
+        {
+            find: "#{intl::xdCLeM::raw}",
+            replacement: [
+                {
+                    match: /profile:\i,disableGuildNameClick:!\i/,
+                    replace: "$&,invite:arguments[0].invite"
+                }
+            ]
+        },
+        {
+            find: "isBannerVisible:!1})},",
+            replacement: [
+                {
+                    match: /children:(\i)\.name\}\)\}\)\}\)/,
+                    replace: "onClick:$self.Lurkable($1),$&"
+                },
+                {
+                    match: /(profile:\i\}\))/,
+                    replace: "$1,$self.RenderTip(arguments[0]?.invite?.expires_at)"
+                },
+                {
+                    match: /(?<=\]\}\),)(?=.{0,15}onlineCount:\i\.onlineCount)/,
+                    replace: "$self.Header(arguments[0]?.invite?.inviter,arguments[0]?.profile?.name),"
+                },
+            ]
+        },
+    ],
+    RenderTip(expires_at: string) {
+        if (!expires_at) return null;
+        const timestamp = <>{Parser.parse(`<t:${Math.round(new Date(expires_at).getTime() / 1000)}:R>`)}</>;
+        const tooltipText = (
+            <>
+                {t(plugin.betterInvites.render.tip, { time: expires_at ? timestamp : t(plugin.betterInvites.render.never) })}
+            </>
+        );
+
+        return (
+            <Tooltip text={tooltipText}>
+                {({ onMouseEnter, onMouseLeave }) => (
+                    <div
+                        className="pc-bi-tooltip"
+                        onMouseEnter={onMouseEnter}
+                        onMouseLeave={onMouseLeave}
+                    >
+                        <InfoIcon className="pc-bi-tooltip-icon" />
+                    </div>
+                )}
+            </Tooltip>
+        );
+    },
+    Header(inviter: User | undefined, guildName: string) {
+        if (!inviter) return null;
+        const userId = UserStore.getCurrentUser().id;
+        const isSelf = userId === inviter.id;
+        return (
+            <div className="pc-bi-header-inner">
+                <img
+                    alt=""
+                    className={classes(AvatarStyles.avatar, AvatarStyles.clickable) + " pc-bi-inviter-avatar"}
+                    onClick={() => openUserProfile(inviter.id)}
+                    src={inviter.avatar
+                        ? `https://cdn.discordapp.com/avatars/${inviter.id}/${inviter.avatar}.webp?size=80`
+                        : "/assets/1f0bfc0865d324c2587920a7d80c609b.png?size=128"}
+                />
+                <div className="pc-bi-header-text">
+                    {isSelf ? t(plugin.betterInvites.render.headerSelf, { server: guildName }) : t(plugin.betterInvites.render.header, { name: inviter.global_name || inviter.username, server: guildName })}
+                </div>
+            </div>
+        );
+    },
+    Lurkable: (guild?: Guild) => {
+        if (!guild) return null;
+        return new Set(guild.features).has("DISCOVERABLE") ? () => lurk(guild.id) : null;
+    },
+    startAt: StartAt.WebpackReady
+});

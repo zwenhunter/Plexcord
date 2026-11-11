@@ -1,0 +1,16 @@
+.pc-customColors-modal-header {
+    place-content: center;
+    justify-content: space-between;
+}
+
+.pc-customColors-modal-header h1 {
+    margin: 0;
+}
+
+.pc-customColors-modal-content {
+    padding: 1em;
+}
+
+.pc-customColors-modal-footer {
+    gap: 16px;
+}

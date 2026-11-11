@@ -1,0 +1,218 @@
+#pc-spotify-player {
+    padding: 12px;
+    margin: 0;
+    border-bottom: 1px solid var(--border-subtle);
+
+    /* so custom themes can easily change it */
+    --pc-spotify-green: var(--spotify, #1db954);
+    --pc-spotify-green-90: color-mix(in hsl, var(--pc-spotify-green), transparent 90%);
+    --pc-spotify-green-80: color-mix(in hsl, var(--pc-spotify-green), transparent 80%);
+}
+
+.pc-spotify-button {
+    margin: 0 2px;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--interactive-icon-default);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.pc-spotify-button:hover {
+    color: var(--interactive-icon-hover);
+    background-color: var(--background-mod-strong);
+}
+
+.pc-spotify-button-icon {
+    height: 24px;
+    width: 24px;
+}
+
+.pc-spotify-shuffle .pc-spotify-button-icon,
+.pc-spotify-repeat .pc-spotify-button-icon {
+    width: 22px;
+    height: 22px;
+}
+
+/* .pc-spotify-button:hover {
+    filter: brightness(1.3);
+} */
+
+.pc-spotify-repeat-context,
+.pc-spotify-repeat-track,
+.pc-spotify-shuffle-on {
+    background-color: var(--pc-spotify-green-90);
+}
+
+.pc-spotify-repeat-context:hover,
+.pc-spotify-repeat-track:hover,
+.pc-spotify-shuffle-on:hover {
+    background-color: var(--pc-spotify-green-80);
+}
+
+.pc-spotify-tooltip-text {
+    overflow: hidden;
+    white-space: nowrap;
+    padding-right: 0.2em;
+    max-width: 100%;
+    margin: unset;
+}
+
+.pc-spotify-repeat-1 {
+    font-size: 70%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-55%, -50%);
+}
+
+.pc-spotify-button-row {
+    justify-content: center;
+    margin-top: 14px;
+}
+
+.pc-spotify-secondary-song-info {
+    font-size: 12px;
+}
+
+.pc-spotify-song-info-prefix {
+    display: none;
+}
+
+#pc-spotify-info-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 3em;
+    gap: 0.5em;
+}
+
+#pc-spotify-album-image {
+    height: 90%;
+    object-fit: contain;
+    border-radius: 3px;
+    transition: filter 0.2s;
+}
+
+#pc-spotify-album-image:hover {
+    filter: brightness(1.2);
+    cursor: pointer;
+}
+
+#pc-spotify-album-expanded-wrapper #pc-spotify-album-image {
+    width: 100%;
+    object-fit: contain;
+}
+
+#pc-spotify-titles {
+    display: flex;
+    flex-direction: column;
+    padding: 0.2rem;
+    align-items: flex-start;
+    place-content: flex-start center;
+    overflow: hidden;
+}
+
+#pc-spotify-song-title {
+    color: var(--text-strong);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.pc-spotify-ellipoverflow {
+    white-space: nowrap;
+    overflow: hidden;
+    width: 100%;
+    text-overflow: ellipsis;
+}
+
+.pc-spotify-artist,
+.pc-spotify-album {
+    font-size: 12px;
+    text-decoration: none;
+    color: var(--text-strong);
+}
+
+.pc-spotify-comma {
+    color: var(--text-default);
+}
+
+.pc-spotify-artist[role="link"]:hover,
+#pc-spotify-album-title[role="link"]:hover,
+#pc-spotify-song-title[role="link"]:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+#pc-spotify-progress-bar {
+    position: relative;
+    color: var(--text-default);
+    width: 100%;
+    margin: 0.5em 0;
+    margin-bottom: 5px;
+}
+
+#pc-spotify-progress-bar > [class*="slider"] {
+    flex-grow: 1;
+    width: 100%;
+    padding: 0 !important;
+}
+
+#pc-spotify-progress-bar > [class*="slider"] [class*="bar"] {
+    height: 3px !important;
+    top: calc(12px - 4px / 2 + var(--bar-offset));
+}
+
+#pc-spotify-progress-bar > [class*="slider"] [class*="barFill"] {
+    background-color: var(--interactive-icon-active);
+}
+
+#pc-spotify-progress-bar > [class*="slider"]:hover [class*="barFill"] {
+    background-color: var(--pc-spotify-green);
+}
+
+#pc-spotify-progress-bar > [class*="slider"] [class*="grabber"] {
+    /* these importants are necessary, it applies a width and height through inline styles */
+    height: 16px !important;
+    width: 16px !important;
+    margin-top: calc(17px/-2 + var(--bar-offset)/2);
+    margin-left: -0.5px;
+    background-color: var(--interactive-icon-active);
+    border-color: var(--interactive-icon-default);
+    color: var(--interactive-icon-default);
+    opacity: 0;
+    transition: opacity 0.1s;
+}
+
+#pc-spotify-progress-bar:hover > [class*="slider"] [class*="grabber"] {
+    opacity: 1;
+}
+
+#pc-spotify-progress-text {
+    margin: 0;
+}
+
+.pc-spotify-progress-time {
+    font-size: 12px;
+    top: 10px;
+    position: absolute;
+    margin-top: 8px;
+    font-family: var(--font-code);
+}
+
+.pc-spotify-time-left {
+    left: 0;
+}
+
+.pc-spotify-time-right {
+    right: 0;
+}
+
+.pc-spotify-fallback {
+    padding: 0.5em;
+    color: var(--text-default);
+}

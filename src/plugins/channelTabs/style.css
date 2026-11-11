@@ -1,0 +1,1438 @@
+:root {
+    --channeltabs-red: var(--danger-color, #f23f42);
+    --channeltabs-blue: #0052b6;
+    --channeltabs-yellow: #f0b132;
+    --channeltabs-green: #24934f;
+    --channeltabs-black: #000;
+    --channeltabs-white: #fff;
+    --channeltabs-orange: #e67e22;
+    --channeltabs-pink: #ff73fa;
+}
+
+.pc-channeltabs-icon {
+    height: 1.5rem;
+    width: 1.5rem;
+    border-radius: 50%;
+}
+
+.pc-channeltabs-guild-acronym-icon {
+    height: 1.25rem;
+    width: 1.5rem;
+    min-width: 1.5rem;
+    border-radius: 50%;
+    padding-top: 0.25rem;
+    background-color: var(--background-primary);
+    overflow: hidden;
+}
+
+.pc-channeltabs-name-text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    margin-left: 0.125rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    transition:
+        color 0.15s ease,
+        font-weight 0.1s ease,
+        transform 0.2s ease;
+}
+
+.pc-channeltabs-tab-inner {
+    border-radius: 12px;
+    padding: 0 28px 0 0;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+    transition:
+        gap 0.15s ease,
+        padding 0.2s ease-in-out;
+}
+
+.pc-channeltabs-tab-container,
+.pc-channeltabs-bookmark-container {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    padding: 0 4px;
+}
+
+.pc-channeltabs-bookmark-container {
+    position: relative;
+}
+
+.pc-channeltabs-container {
+    padding: 4px;
+    display: flex;
+    flex-direction: column-reverse;
+    -webkit-app-region: no-drag;
+    background-color: var(--background-primary);
+    box-shadow: inset 0 1px 0 var(--background-base-low);
+}
+
+.pc-channeltabs-container-top {
+    padding-left: 4px;
+    box-shadow: inset 0 -1px 0 var(--background-base-low);
+    grid-area: notice;
+    z-index: 102;
+}
+
+/* as its in the same region as notices, it needs to hide itself when a notice is shown
+   there's no permanent notices, right? */
+[class*="notice"] + .pc-channeltabs-container-top {
+    z-index: 1;
+    height: 32px;
+    overflow: hidden;
+}
+
+.pc-channeltabs-separator {
+    width: 98%;
+    height: 1px;
+    background: var(--input-border-default, var(--input-border));
+    margin: 4px auto;
+}
+
+.pc-channeltabs-scroller {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    margin-top: -15px;
+    margin-bottom: -15px;
+}
+
+.pc-channeltabs-scroller::-webkit-scrollbar {
+    display: none;
+}
+
+/* tab scroller for horizontal overflow */
+.pc-channeltabs-tab-scroller {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    padding-top: 16px;
+    padding-bottom: 15px;
+    margin-top: -15px;
+    margin-bottom: -15px;
+}
+
+.pc-channeltabs-tab-scroller-following {
+    max-width: 100%;
+}
+
+.pc-channeltabs-tab-scroller::-webkit-scrollbar {
+    display: none;
+}
+
+.pc-channeltabs-bookmarks {
+    flex-grow: 1;
+    overflow: hidden;
+    padding: 2px 0 2px 8px;
+}
+
+.pc-channeltabs-bookmark-placeholder-text {
+    color: var(--text-muted);
+    padding: 0.25rem 0 0 0.25rem;
+}
+
+.pc-channeltabs-bookmark-star {
+    fill: none;
+    stroke: var(--text-muted);
+    stroke-width: 0.075rem;
+    transition: all 0.15s ease;
+}
+
+.pc-channeltabs-bookmark-star:hover {
+    stroke: var(--interactive-icon-hover);
+}
+
+.pc-channeltabs-bookmark-star-checked {
+    fill: var(--main-color, var(--brand-experiment, var(--brand-500)));
+    stroke: var(--main-color, var(--brand-experiment, var(--brand-500)));
+}
+
+.pc-channeltabs-bookmark {
+    display: flex;
+    flex-direction: row;
+    max-width: calc(8rem * var(--tab-width-scale, 1));
+    padding: 4px 8px;
+    border-radius: 4px;
+    align-items: center;
+    position: relative;
+    transition:
+        transform 0.14s ease,
+        border-color 0.14s ease,
+        box-shadow 0.14s ease,
+        background-color 0.14s ease;
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-wider {
+    max-width: calc(12rem * var(--tab-width-scale, 1));
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-folder {
+    margin-left: 4px;
+    margin-right: 4px;
+}
+
+.pc-channeltabs-bookmark .pc-channeltabs-name-text {
+    margin-left: 0.25rem;
+    margin-right: 0.25rem;
+}
+
+.pc-channeltabs-bookmark-icon {
+    height: 1rem;
+    width: 1rem;
+    border-radius: 50%;
+    background-color: var(--background-primary);
+    text-align: center;
+}
+
+.pc-channeltabs-channel-info {
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.pc-channeltabs-tab {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 12px;
+    width: calc(12rem * var(--tab-width-scale, 1));
+    min-width: 0;
+    margin: 0 4px;
+    background-color: transparent;
+    border: 1px solid var(--background-mod-muted);
+    transition:
+        transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        opacity 0.15s ease;
+    min-height: calc(38px * var(--tab-height-scale, 1));
+    padding: calc(6px * var(--tab-height-scale, 1)) 8px;
+    position: relative;
+    cursor: grab;
+    flex-shrink: 0;
+}
+
+.pc-channeltabs-tab:active {
+    cursor: grabbing;
+}
+
+.pc-channeltabs-tab-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    cursor: ew-resize;
+    z-index: 10;
+    opacity: 0;
+    background: var(--hover-color, var(--main-color, var(--brand-experiment, var(--brand-500))));
+    border-radius: 0 11px 11px 0;
+    transition: opacity 0.2s ease;
+}
+
+.pc-channeltabs-tab-resize-handle:hover {
+    opacity: 0.7 !important;
+}
+
+.pc-channeltabs-no-resize-handle-animation .pc-channeltabs-tab-resize-handle {
+    transition: none !important;
+}
+
+.pc-channeltabs-tab:hover .pc-channeltabs-tab-resize-handle {
+    opacity: 0.3;
+}
+
+.pc-channeltabs-tab-resizing {
+    pointer-events: none;
+    user-select: none;
+}
+
+.pc-channeltabs-tab-resizing * {
+    pointer-events: none;
+    user-select: none;
+}
+
+.pc-channeltabs-tab.pc-channeltabs-wider:not(.pc-channeltabs-tab-compact) {
+    width: calc(16rem * var(--tab-width-scale, 1));
+}
+
+.pc-channeltabs-tab-compact {
+    width: auto;
+    min-width: calc(3rem * var(--tab-width-scale, 1));
+    transition: all 0.4s ease-out;
+}
+
+.pc-channeltabs-tab-compact .pc-channeltabs-tab-inner {
+    padding-right: 0;
+    transition: padding 0.4s ease-out;
+}
+
+.pc-channeltabs-tab-compact:hover .pc-channeltabs-tab-inner,
+.pc-channeltabs-tab-compact.pc-channeltabs-tab-selected .pc-channeltabs-tab-inner {
+    padding-right: 28px;
+}
+
+.pc-channeltabs-tab-compact .pc-channeltabs-name-text {
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    margin-left: 0.125rem;
+    transform: translateX(-20px);
+    transition:
+        max-width 0.4s ease-out,
+        opacity 0.4s ease-out,
+        transform 0.4s ease-out;
+}
+
+.pc-channeltabs-tab-compact:hover .pc-channeltabs-name-text,
+.pc-channeltabs-tab-compact.pc-channeltabs-tab-selected .pc-channeltabs-name-text {
+    max-width: 200px;
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.pc-channeltabs-tab-selected {
+    transform: translateY(-1px);
+    background-color: var(--background-base-low);
+    border: 1px solid var(--main-color, var(--brand-experiment, var(--brand-500)));
+    border-bottom: 2px solid var(--main-color, var(--brand-experiment, var(--brand-500)));
+    box-shadow: 0 1px 3px rgb(0 0 0 / 20%);
+}
+
+.pc-channeltabs-dark-theme.pc-channeltabs-tab-selected .pc-channeltabs-name-text {
+    font-weight: 600;
+    color: var(--white-500);
+}
+
+.pc-channeltabs-light-theme.pc-channeltabs-tab-selected .pc-channeltabs-name-text {
+    font-weight: 600;
+}
+
+.pc-channeltabs-tab-selected .pc-channeltabs-guild-acronym-icon span {
+    color: var(--white-500);
+}
+
+.pc-channeltabs-tab-container svg {
+    -webkit-app-region: no-drag;
+}
+
+.pc-channeltabs-tab-selected svg,
+.pc-channeltabs-tab-selected .pc-channeltabs-close-button svg {
+    color: var(--white-500);
+    fill: var(--white-500);
+}
+
+.pc-channeltabs-container [class*="iconContainer"] {
+    margin: 0 -0.25rem 0 0;
+    pointer-events: none;
+    height: 1rem;
+    transform: scale(0.8);
+}
+
+.pc-channeltabs-container [class*="numberBadge"] {
+    background-color: var(--channeltabs-red) !important;
+    color: var(--channeltabs-white);
+    border-radius: 50%;
+    min-width: 16px;
+    height: 16px;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+.pc-channeltabs-ghost-tab {
+    visibility: hidden;
+}
+
+.pc-channeltabs-hoverable:hover,
+.pc-channeltabs-tab:hover:not(.pc-channeltabs-tab-selected) {
+    transform: translateY(-1px) scale(1.02);
+    background-color: var(--background-secondary-alt);
+    border-color: var(--hover-color, var(--border-subtle));
+    box-shadow: 0 2px 4px rgb(0 0 0 / 10%);
+}
+
+.pc-channeltabs-tab:active:not(.pc-channeltabs-tab-selected) {
+    transform: translateY(0) scale(0.98);
+    transition-duration: 0.05s;
+}
+
+.pc-channeltabs-button {
+    background-color: transparent;
+    color: var(--text-default);
+}
+
+.pc-channeltabs-bookmark-search-shell {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.pc-channeltabs-bookmark-search-shell-open {
+    z-index: 3;
+}
+
+.pc-channeltabs-bookmark-search-field {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: 0;
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+    transform: translateY(-50%) scaleX(0.92);
+    transform-origin: right center;
+    transition:
+        width 0.18s ease,
+        opacity 0.15s ease,
+        transform 0.18s ease;
+}
+
+.pc-channeltabs-bookmark-search-shell-open .pc-channeltabs-bookmark-search-field {
+    width: 160px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) scaleX(1);
+}
+
+.pc-channeltabs-bookmark-search-input {
+    padding-right: 34px !important;
+}
+
+.pc-channeltabs-bookmark-search-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: color 0.15s ease;
+}
+
+.pc-channeltabs-bookmark-search-button:hover {
+    color: var(--interactive-icon-hover);
+}
+
+.pc-channeltabs-new-button {
+    padding: 4px;
+    margin: 0 4px;
+    border-radius: 4px;
+    background-color: var(--background-base-low);
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.pc-channeltabs-tab-scroller-following .pc-channeltabs-new-button {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+}
+
+.pc-channeltabs-new-button:hover {
+    background-color: var(--background-mod-subtle);
+    transform: scale(1.1);
+}
+
+.pc-channeltabs-new-button:active {
+    transform: scale(0.95);
+}
+
+.pc-channeltabs-new-button svg {
+    transition: all 0.2s ease;
+}
+
+.pc-channeltabs-new-button:hover svg {
+    color: var(--interactive-icon-hover);
+    animation: pc-channeltabs-plus-spin 0.3s ease-in-out;
+}
+
+@keyframes pc-channeltabs-plus-spin {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+
+    50% {
+        transform: rotate(90deg) scale(1.15);
+    }
+
+    100% {
+        transform: rotate(90deg) scale(1);
+    }
+}
+
+.pc-channeltabs-close-button {
+    height: 1rem;
+    padding: 0;
+    margin: 0 0 0 4px;
+    border-radius: 50%;
+    color: var(--text-muted);
+    transition:
+        all 0.15s ease,
+        transform 0.2s ease-in-out;
+}
+
+.pc-channeltabs-close-button:hover {
+    background-color: var(--background-mod-subtle);
+    transform: rotate(90deg);
+}
+
+.pc-channeltabs-close-button:active {
+    transform: rotate(90deg) scale(0.9);
+}
+
+.pc-channeltabs-tab-selected .pc-channeltabs-close-button {
+    color: var(--white-500);
+}
+
+.pc-channeltabs-tab-selected .pc-channeltabs-close-button:hover {
+    background-color: color-mix(in srgb, white 15%, transparent);
+    transform: rotate(90deg);
+}
+
+.pc-channeltabs-tab-selected .pc-channeltabs-close-button:active {
+    transform: rotate(90deg) scale(0.9);
+}
+
+.pc-channeltabs-close-button-compact {
+    position: absolute;
+    opacity: 0;
+    width: 2rem;
+    height: 2rem;
+    margin-left: 0.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transform: translateX(-10px) scale(0.8);
+    transition:
+        opacity 0.3s ease-out 0.2s,
+        transform 0.3s ease-out 0.2s;
+    right: 4px;
+}
+
+.pc-channeltabs-tab-compact:hover .pc-channeltabs-close-button-compact,
+.pc-channeltabs-tab-compact.pc-channeltabs-tab-selected .pc-channeltabs-close-button-compact {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+}
+
+.pc-channeltabs-close-button.pc-channeltabs-close-button-compact:hover {
+    background-color: var(--background-mod-subtle);
+    transform: translateX(0) scale(1) rotate(90deg) !important;
+    transition:
+        opacity 0.3s ease-out 0.2s,
+        transform 0.2s ease-in-out,
+        background-color 0.15s ease;
+}
+
+.pc-channeltabs-close-button.pc-channeltabs-close-button-compact:active {
+    transform: translateX(0) scale(0.9) rotate(90deg) !important;
+    transition:
+        opacity 0.3s ease-out 0.2s,
+        transform 0.2s ease-in-out,
+        background-color 0.15s ease;
+}
+
+.pc-channeltabs-preview-tab {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: calc(12rem * var(--tab-width-scale, 1));
+    padding: 0.125rem 0;
+    min-width: 0;
+    border-radius: 0.25rem;
+    border: 1px solid var(--input-border-default, var(--input-border));
+}
+
+.pc-channeltabs-preview-tab-compact {
+    width: unset;
+    min-width: unset;
+}
+
+.pc-channeltabs-preview-tab
+    > :is(.pc-channeltabs-emoji-container, .pc-channeltabs-typing-indicator, [data-has-mention]) {
+    display: none;
+}
+
+.pc-channeltabs-preview-text {
+    overflow: hidden;
+}
+
+.pc-channeltabs-tab-container .pc-channeltabs-new-button,
+.pc-channeltabs-tab-container .pc-channeltabs-hoverable,
+.pc-channeltabs-tab-container .pc-channeltabs-button {
+    -webkit-app-region: no-drag;
+}
+
+.pc-channeltabs-tab-container .pc-channeltabs-hoverable,
+.pc-channeltabs-tab-container .pc-channeltabs-button,
+.pc-channeltabs-tab-container svg {
+    -webkit-app-region: no-drag;
+}
+
+/* Red glow effect for tabs with mentions */
+.pc-channeltabs-tab:has([data-has-mention="true"]) {
+    animation: pc-channeltabs-mention-pulse 2s ease-in-out infinite;
+    box-shadow:
+        0 0 8px color-mix(in srgb, var(--danger-color, rgb(242 63 66)) 60%, transparent),
+        0 0 16px color-mix(in srgb, var(--danger-color, rgb(242 63 66)) 30%, transparent);
+}
+
+@keyframes pc-channeltabs-mention-pulse {
+    0%,
+    100% {
+        box-shadow:
+            0 0 8px color-mix(in srgb, var(--danger-color, rgb(242 63 66)) 60%, transparent),
+            0 0 16px color-mix(in srgb, var(--danger-color, rgb(242 63 66)) 30%, transparent);
+    }
+
+    50% {
+        box-shadow:
+            0 0 12px color-mix(in srgb, var(--danger-color, rgb(242 63 66)) 80%, transparent),
+            0 0 24px color-mix(in srgb, var(--danger-color, rgb(242 63 66)) 50%, transparent);
+    }
+}
+
+/* Enhance glow for selected tabs with mentions */
+.pc-channeltabs-tab-selected:has([data-has-mention="true"]) {
+    box-shadow:
+        0 1px 3px rgb(0 0 0 / 20%),
+        0 0 12px color-mix(in srgb, var(--danger-color, rgb(242 63 66)) 80%, transparent),
+        0 0 24px color-mix(in srgb, var(--danger-color, rgb(242 63 66)) 50%, transparent);
+}
+
+/* Pink Nitro glow effect (easter egg) */
+.pc-channeltabs-tab-nitro {
+    animation: pc-channeltabs-nitro-pulse 3s ease-in-out infinite;
+    box-shadow:
+        0 0 10px rgb(255 115 250 / 70%),
+        0 0 20px rgb(255 115 250 / 40%);
+}
+
+@keyframes pc-channeltabs-nitro-pulse {
+    0%,
+    100% {
+        box-shadow:
+            0 0 10px rgb(255 115 250 / 70%),
+            0 0 20px rgb(255 115 250 / 40%);
+    }
+
+    50% {
+        box-shadow:
+            0 0 16px rgb(255 115 250 / 90%),
+            0 0 32px rgb(255 115 250 / 60%);
+    }
+}
+
+/* Enhanced Nitro glow for selected tab */
+.pc-channeltabs-tab-selected.pc-channeltabs-tab-nitro {
+    box-shadow:
+        0 1px 3px rgb(0 0 0 / 20%),
+        0 0 16px rgb(255 115 250 / 90%),
+        0 0 32px rgb(255 115 250 / 60%);
+}
+
+/* Nitro icon gradient animation */
+.pc-channeltabs-tab-nitro .pc-channeltabs-tab-inner svg {
+    filter: drop-shadow(0 0 2px rgb(255 115 250 / 80%));
+}
+
+.pc-channeltabs-tab-nitro .pc-channeltabs-tab-inner svg path {
+    fill: rgb(255 115 250) !important;
+    animation: pc-channeltabs-nitro-icon-gradient 3s ease-in-out infinite;
+}
+
+@keyframes pc-channeltabs-nitro-icon-gradient {
+    0%,
+    100% {
+        fill: rgb(255 115 250);
+    }
+
+    50% {
+        fill: rgb(255 180 250);
+    }
+}
+
+/* quests active gradient when quests are running */
+.pc-channeltabs-tab-quests-active {
+    position: relative;
+    overflow: visible;
+}
+
+.pc-channeltabs-tab-quests-active::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 11px;
+    background: linear-gradient(
+        135deg,
+        transparent,
+        transparent 25%,
+        rgb(114 137 218) 40%,
+        rgb(88 101 242) 50%,
+        rgb(71 82 196) 60%,
+        transparent 75%,
+        transparent
+    );
+    background-size: 300% 300%;
+    animation: pc-channeltabs-quests-diagonal 5s linear infinite;
+    opacity: 0.8;
+    filter: blur(2px);
+    pointer-events: none;
+}
+
+.pc-channeltabs-tab-quests-active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 11px;
+    animation: pc-channeltabs-quests-glow 3s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes pc-channeltabs-quests-diagonal {
+    0%,
+    40% {
+        background-position: 100% 0;
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+
+    60%,
+    100% {
+        background-position: 0 100%;
+        opacity: 0;
+    }
+}
+
+@keyframes pc-channeltabs-quests-glow {
+    0% {
+        box-shadow: 0 0 8px 1px rgb(114 137 218 / 60%);
+    }
+
+    33% {
+        box-shadow: 0 0 8px 1px rgb(88 101 242 / 60%);
+    }
+
+    66% {
+        box-shadow: 0 0 8px 1px rgb(71 82 196 / 60%);
+    }
+
+    100% {
+        box-shadow: 0 0 8px 1px rgb(114 137 218 / 60%);
+    }
+}
+
+/* Enhanced gradient for selected Quests tab with active quests */
+.pc-channeltabs-tab-selected.pc-channeltabs-tab-quests-active::before {
+    opacity: 1;
+    filter: blur(3px);
+}
+
+.pc-channeltabs-tab-selected.pc-channeltabs-tab-quests-active::after {
+    animation: pc-channeltabs-quests-glow-selected 3s ease-in-out infinite;
+}
+
+@keyframes pc-channeltabs-quests-glow-selected {
+    0% {
+        box-shadow: 0 0 12px 2px rgb(114 137 218 / 80%);
+    }
+
+    33% {
+        box-shadow: 0 0 12px 2px rgb(88 101 242 / 80%);
+    }
+
+    66% {
+        box-shadow: 0 0 12px 2px rgb(71 82 196 / 80%);
+    }
+
+    100% {
+        box-shadow: 0 0 12px 2px rgb(114 137 218 / 80%);
+    }
+}
+
+/* Disable Quests active animations when setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-quests-active-animation
+    .pc-channeltabs-tab-quests-active::before,
+.pc-channeltabs-container.pc-channeltabs-no-quests-active-animation
+    .pc-channeltabs-tab-quests-active::after {
+    animation: none !important;
+    opacity: 0 !important;
+}
+
+/* Tab closing animation */
+@keyframes pc-channeltabs-tab-close {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+        max-width: 100%;
+        margin: 0 4px;
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(0.95);
+        max-width: 50%;
+    }
+
+    100% {
+        opacity: 0;
+        transform: scale(0.9) translateX(-20px);
+    }
+}
+
+.pc-channeltabs-tab-closing {
+    animation: pc-channeltabs-tab-close 0.2s ease-in-out forwards;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+/* New tab slide-in animation */
+@keyframes pc-channeltabs-tab-enter {
+    0% {
+        opacity: 0;
+        transform: scale(0.8) translateX(-20px);
+    }
+
+    60% {
+        transform: scale(1.05) translateX(0);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1) translateX(0);
+    }
+}
+
+.pc-channeltabs-tab-entering {
+    animation: pc-channeltabs-tab-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Icon scale on selection */
+.pc-channeltabs-tab-selected .pc-channeltabs-icon,
+.pc-channeltabs-tab-selected .pc-channeltabs-guild-acronym-icon {
+    animation: pc-channeltabs-icon-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pc-channeltabs-icon-pop {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.15);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Drag and drop visual feedback */
+.pc-channeltabs-tab-dragging {
+    opacity: 0.5;
+    transform: rotate(3deg);
+    cursor: grabbing !important;
+    z-index: 1000;
+    transition: none !important;
+}
+
+/* Disable tab transitions when any tab is being dragged for smoother reordering */
+.pc-channeltabs-tab-container:has(.pc-channeltabs-tab-dragging)
+    .pc-channeltabs-tab:not(.pc-channeltabs-tab-dragging) {
+    transition:
+        transform 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+        opacity 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.pc-channeltabs-tab-drop-target {
+    position: relative;
+}
+
+.pc-channeltabs-tab-drop-target::before {
+    content: "";
+    position: absolute;
+    left: -4px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--main-color, var(--brand-experiment, var(--brand-500)));
+    border-radius: 3px;
+    animation: pc-channeltabs-drop-indicator 0.5s ease-in-out infinite;
+}
+
+@keyframes pc-channeltabs-drop-indicator {
+    0%,
+    100% {
+        opacity: 0.6;
+        box-shadow: 0 0 8px var(--main-color, var(--brand-experiment, var(--brand-500)));
+    }
+
+    50% {
+        opacity: 1;
+        box-shadow: 0 0 12px var(--main-color, var(--brand-experiment, var(--brand-500)));
+    }
+}
+
+.pc-channeltabs-tab-container {
+    transition: all 0.2s ease-out;
+}
+
+/* animation override settings */
+
+/* Hover animation - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-hover-animation
+    .pc-channeltabs-tab:hover:not(.pc-channeltabs-tab-selected) {
+    transform: none !important;
+}
+
+/* Selection animation - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-selection-animation .pc-channeltabs-tab-selected {
+    transform: none !important;
+}
+
+/* Drag & drop animation - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-drag-animation .pc-channeltabs-tab-dragging {
+    opacity: 1 !important;
+    transform: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-drag-animation .pc-channeltabs-tab-drop-target::before {
+    display: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-drag-animation .pc-channeltabs-tab-drop-target {
+    transform: none !important;
+    background-color: transparent !important;
+    border-color: var(--background-mod-muted) !important;
+    box-shadow: none !important;
+}
+
+/* Enter/exit animation - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-enter-exit-animation .pc-channeltabs-tab-entering {
+    animation: none !important;
+}
+
+/* Also disable closing animation for instant disappear */
+.pc-channeltabs-container.pc-channeltabs-no-enter-exit-animation .pc-channeltabs-tab-closing {
+    animation: none !important;
+    opacity: 0 !important;
+    display: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-enter-exit-animation .pc-channeltabs-tab {
+    transition:
+        opacity 0.2s ease-out,
+        transform 0.2s ease-in-out,
+        background-color 0.15s ease !important;
+}
+
+/* Icon pop animation - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-icon-pop-animation
+    .pc-channeltabs-tab-selected
+    .pc-channeltabs-icon,
+.pc-channeltabs-container.pc-channeltabs-no-icon-pop-animation
+    .pc-channeltabs-tab-selected
+    .pc-channeltabs-guild-acronym-icon {
+    animation: none !important;
+}
+
+/* Selected tab border - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-selected-border .pc-channeltabs-tab-selected {
+    border: 1px solid var(--background-mod-muted) !important;
+    border-bottom: 1px solid var(--background-mod-muted) !important;
+}
+
+/* Selected tab background - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-selected-background .pc-channeltabs-tab-selected {
+    background-color: transparent !important;
+}
+
+/* Tab shadows - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-tab-shadows .pc-channeltabs-tab,
+.pc-channeltabs-container.pc-channeltabs-no-tab-shadows .pc-channeltabs-tab-selected,
+.pc-channeltabs-container.pc-channeltabs-no-tab-shadows .pc-channeltabs-tab:hover {
+    box-shadow: none !important;
+}
+
+/* Close button rotation - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-close-rotation
+    .pc-channeltabs-tab-selected
+    .pc-channeltabs-close-button:hover {
+    transform: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-close-rotation .pc-channeltabs-close-button:hover {
+    transform: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-close-rotation
+    .pc-channeltabs-tab-selected
+    .pc-channeltabs-close-button:active {
+    transform: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-close-rotation .pc-channeltabs-close-button:active {
+    transform: none !important;
+}
+
+/* Plus button animation - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-plus-animation .pc-channeltabs-new-button:hover {
+    transform: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-plus-animation .pc-channeltabs-new-button:active {
+    transform: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-plus-animation .pc-channeltabs-new-button:hover svg {
+    animation: none !important;
+}
+
+/* Mention glow - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-mention-glow
+    .pc-channeltabs-tab:has([data-has-mention="true"]) {
+    animation: none !important;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 20%) !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-mention-glow
+    .pc-channeltabs-tab-selected:has([data-has-mention="true"]) {
+    box-shadow: 0 1px 3px rgb(0 0 0 / 20%) !important;
+}
+
+/* Compact mode expansion animation - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-compact-animation .pc-channeltabs-tab-compact {
+    transition: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-compact-animation
+    .pc-channeltabs-tab-compact
+    .pc-channeltabs-name-text {
+    transition: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-compact-animation .pc-channeltabs-close-button-compact {
+    transition: none !important;
+}
+
+/* Also disable tab-inner padding transition */
+.pc-channeltabs-container.pc-channeltabs-no-compact-animation
+    .pc-channeltabs-tab-compact
+    .pc-channeltabs-tab-inner {
+    transition: none !important;
+}
+
+/* Make close button appear instantly with more specificity */
+.pc-channeltabs-container.pc-channeltabs-no-compact-animation
+    .pc-channeltabs-tab-compact:hover
+    .pc-channeltabs-close-button-compact,
+.pc-channeltabs-container.pc-channeltabs-no-compact-animation
+    .pc-channeltabs-tab-compact.pc-channeltabs-tab-selected
+    .pc-channeltabs-close-button-compact {
+    transition: none !important;
+    transition-delay: 0s !important;
+}
+
+/* Tab positioning - disable if setting is off for INSTANT position changes */
+.pc-channeltabs-container.pc-channeltabs-no-tab-positioning .pc-channeltabs-tab-container {
+    transition: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-tab-positioning .pc-channeltabs-tab {
+    transition: none !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-tab-positioning
+    .pc-channeltabs-tab-container:has(.pc-channeltabs-tab-dragging)
+    .pc-channeltabs-tab:not(.pc-channeltabs-tab-dragging) {
+    transition: none !important;
+}
+
+/* Compact auto-expand selected - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-compact-auto-expand
+    .pc-channeltabs-tab-compact.pc-channeltabs-tab-selected
+    .pc-channeltabs-tab-inner {
+    padding-right: 0 !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-compact-auto-expand
+    .pc-channeltabs-tab-compact.pc-channeltabs-tab-selected
+    .pc-channeltabs-name-text {
+    max-width: 0 !important;
+    opacity: 0 !important;
+    transform: translateX(-20px) !important;
+}
+
+/* Hide close button on selected compact tabs when auto-expand is disabled */
+.pc-channeltabs-container.pc-channeltabs-no-compact-auto-expand
+    .pc-channeltabs-tab-compact.pc-channeltabs-tab-selected
+    .pc-channeltabs-close-button-compact {
+    opacity: 0 !important;
+    pointer-events: none;
+}
+
+/* Compact hover expansion - disable if setting is off */
+.pc-channeltabs-container.pc-channeltabs-no-compact-hover-expand
+    .pc-channeltabs-tab-compact:hover
+    .pc-channeltabs-tab-inner {
+    padding-right: 0 !important;
+}
+
+.pc-channeltabs-container.pc-channeltabs-no-compact-hover-expand
+    .pc-channeltabs-tab-compact:hover
+    .pc-channeltabs-name-text {
+    max-width: 0 !important;
+    opacity: 0 !important;
+    transform: translateX(-20px) !important;
+}
+
+/* Hide close button on hover for compact tabs when hover-expand is disabled */
+.pc-channeltabs-container.pc-channeltabs-no-compact-hover-expand
+    .pc-channeltabs-tab-compact:hover
+    .pc-channeltabs-close-button-compact {
+    opacity: 0 !important;
+    pointer-events: none;
+}
+
+/* Drag and drop visual feedback */
+.pc-channeltabs-bookmarks-drop-target {
+    background-color: color-mix(
+        in srgb,
+        var(--main-color, var(--brand-experiment, var(--brand-500))) 15%,
+        transparent
+    );
+    border: 1px dashed
+        color-mix(
+            in srgb,
+            var(--main-color, var(--brand-experiment, var(--brand-500))) 65%,
+            transparent
+        );
+    border-radius: 6px;
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-dragging {
+    opacity: 0.55;
+    transform: scale(0.98);
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-drop-target {
+    border-color: color-mix(
+        in srgb,
+        var(--main-color, var(--brand-experiment, var(--brand-500))) 70%,
+        var(--border-subtle)
+    );
+    box-shadow: inset 0 0 0 1px
+        color-mix(
+            in srgb,
+            var(--main-color, var(--brand-experiment, var(--brand-500))) 35%,
+            transparent
+        );
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-drop-before::before,
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-drop-after::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    width: 2px;
+    border-radius: 999px;
+    background-color: var(--main-color, var(--brand-experiment, var(--brand-500)));
+    box-shadow: 0 0 0 1px
+        color-mix(
+            in srgb,
+            var(--main-color, var(--brand-experiment, var(--brand-500))) 30%,
+            transparent
+        );
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-drop-before::before {
+    left: -3px;
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-drop-after::after {
+    right: -3px;
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-drop-before {
+    transform: translateX(5px);
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-drop-after {
+    transform: translateX(-5px);
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-folder-drop-target {
+    background-color: color-mix(
+        in srgb,
+        var(--main-color, var(--brand-experiment, var(--brand-500))) 22%,
+        transparent
+    );
+    border: 1px solid
+        color-mix(
+            in srgb,
+            var(--main-color, var(--brand-experiment, var(--brand-500))) 80%,
+            var(--border-subtle)
+        );
+    transform: scale(1.03);
+    box-shadow: 0 0 0 2px
+        color-mix(
+            in srgb,
+            var(--main-color, var(--brand-experiment, var(--brand-500))) 20%,
+            transparent
+        );
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-folder-expanded {
+    background-color: var(--background-mod-strong);
+}
+
+/* Folder item styling - indented and visually connected to folder */
+.pc-channeltabs-bookmark.pc-channeltabs-folder-item {
+    margin-left: 0.5rem;
+    border-left: 2px solid var(--background-mod-muted);
+    padding-left: 0.5rem;
+    opacity: 0.9;
+    background-color: var(--background-secondary-alt);
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-folder-item:hover {
+    opacity: 1;
+    background-color: var(--background-mod-subtle);
+}
+
+/* Active bookmark visual indicator */
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-active {
+    border: 1px solid var(--main-color, var(--brand-experiment, var(--brand-500)));
+    box-shadow: 0 0 4px var(--main-color, var(--brand-experiment, var(--brand-500)));
+    background-color: color-mix(
+        in srgb,
+        var(--main-color, var(--brand-experiment, var(--brand-500))) 15%,
+        transparent
+    );
+}
+
+.pc-channeltabs-bookmark.pc-channeltabs-bookmark-active:hover {
+    box-shadow: 0 0 6px
+        var(--hover-color, var(--main-color, var(--brand-experiment, var(--brand-500))));
+}
+
+/* keybind Settings Styles */
+.channelTabs-keybind-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 8px 0;
+}
+
+.channelTabs-keybind-input {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px;
+    background-color: var(--background-secondary-alt);
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+
+.channelTabs-keybind-input:hover {
+    background-color: var(--background-secondary-alt);
+}
+
+.channelTabs-keybind-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.channelTabs-keybind-controls {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.channelTabs-keybind-button {
+    padding: 8px 16px;
+    background-color: var(--background-base-low);
+    border: 2px solid var(--input-border-default, var(--input-border));
+    border-radius: 8px;
+    cursor: pointer;
+    min-width: 140px;
+    text-align: center;
+    font-family: var(--font-code);
+    font-weight: 600;
+    color: var(--text-strong);
+    transition: all 0.2s ease;
+    outline: none;
+    box-shadow: 0 0 0 1px var(--background-mod-muted);
+}
+
+.channelTabs-keybind-button:hover:not(:disabled) {
+    background-color: var(--background-mod-subtle);
+    border-color: var(--hover-color, var(--main-color, var(--brand-experiment, var(--brand-500))));
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+}
+
+.channelTabs-keybind-button:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgb(0 0 0 / 20%);
+}
+
+.channelTabs-keybind-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.channelTabs-keybind-button.listening {
+    background: linear-gradient(
+        135deg,
+        var(--main-color, var(--brand-experiment, var(--brand-500))) 0%,
+        var(--brand-experiment-560) 100%
+    );
+    color: var(--white);
+    border-color: var(--main-color, var(--brand-experiment, var(--brand-500)));
+    animation: keybind-pulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 12px var(--main-color, var(--brand-experiment, var(--brand-500)));
+}
+
+@keyframes keybind-pulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.85;
+        transform: scale(1.02);
+    }
+}
+
+.channelTabs-keybind-conflict {
+    color: var(--text-feedback-critical);
+    font-size: 12px;
+    font-weight: 500;
+    margin-top: 2px;
+    animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    25% {
+        transform: translateX(-4px);
+    }
+
+    75% {
+        transform: translateX(4px);
+    }
+}
+
+/* Tab Number Badge Styles */
+.pc-channeltabs-tab-number-badge {
+    background-color: rgb(0 0 0 / 25%);
+    color: var(--text-default);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    max-width: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition:
+        opacity 0.2s ease-out,
+        transform 0.2s ease-out,
+        max-width 0.2s ease-out,
+        margin 0.2s ease-out;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+/* position: Left */
+.pc-channeltabs-tab-number-badge[data-position="left"] {
+    margin-right: 0.5rem;
+    transition:
+        opacity 0.2s ease-out,
+        transform 0.2s ease-out,
+        max-width 0.2s ease-out,
+        margin-right 0.2s ease-out;
+}
+
+/* position: Right */
+.pc-channeltabs-tab-number-badge[data-position="right"] {
+    margin-left: 0.5rem;
+    transition:
+        opacity 0.2s ease-out,
+        transform 0.2s ease-out,
+        max-width 0.2s ease-out,
+        margin-left 0.2s ease-out;
+}
+
+/* hover effect (slight scale up) */
+.pc-channeltabs-tab:hover .pc-channeltabs-tab-number-badge {
+    transform: scale(1.05);
+}
+
+/* directional slide animations for compact mode */
+.pc-channeltabs-tab-compact:not(:hover, .pc-channeltabs-tab-selected)
+    .pc-channeltabs-tab-number-badge[data-position="right"] {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.95);
+    max-width: 0;
+    margin-left: 0;
+    pointer-events: none;
+}
+
+.pc-channeltabs-tab-compact:not(:hover, .pc-channeltabs-tab-selected)
+    .pc-channeltabs-tab-number-badge[data-position="left"] {
+    opacity: 0;
+    transform: translateX(-6px) scale(0.95);
+    max-width: 0;
+    margin-right: 0;
+    pointer-events: none;
+}
+
+/* disable transitions when compact expand animation is disabled */
+.pc-channeltabs-no-compact-animation .pc-channeltabs-tab-number-badge {
+    transition: none !important;
+}

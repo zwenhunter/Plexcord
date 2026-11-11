@@ -1,0 +1,92 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { plugin, t } from "@api/i18n";
+import { PaintbrushIcon } from "@components/Icons";
+import { PcDevs } from "@utils/constants";
+import definePlugin from "@utils/types";
+import { extractAndLoadChunksLazy } from "@webpack";
+import { ChannelStore, closeModal, DraftType, FluxDispatcher, Menu, openModal, PendingReplyStore, SelectedChannelStore, UploadHandler } from "@webpack/common";
+
+import RemixModal from "./RemixModal";
+import css from "./styles.css?managed";
+
+const requireCreateStickerModal = extractAndLoadChunksLazy([".CREATE_STICKER_MODAL,", "isDisplayingIndividualStickers"]);
+const requireSettingsMenu = extractAndLoadChunksLazy(['type:"USER_SETTINGS_MODAL_OPEN"']);
+const validMediaTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+
+const UploadContextMenuPatch: NavContextMenuPatchCallback = (children, props) => {
+    if (children.find(c => c?.props?.id === "pc-remix")) return;
+
+    children.push(<Menu.MenuItem
+        id="pc-remix"
+        iconLeft={PaintbrushIcon}
+        leadingAccessory={{
+            type: "icon",
+            icon: PaintbrushIcon
+        }}
+        label={t(plugin.remix.label)}
+        action={() => {
+            const key = openModal(props =>
+                <RemixModal modalProps={props} close={() => closeModal(key)} />
+            );
+        }}
+    />);
+};
+
+const MessageContextMenuPatch: NavContextMenuPatchCallback = (children, props) => {
+    const url = props.itemHref ?? props.itemSrc;
+    if (!url) return;
+    if (props.attachment && !validMediaTypes.includes(props.attachment.content_type)) return;
+
+    const group = findGroupChildrenByChildId("copy-text", children);
+    if (!group) return;
+    if (group.find(c => c?.props?.id === "pc-remix")) return;
+
+    const index = group.findIndex(c => c?.props?.id === "copy-text");
+
+    group.splice(index + 1, 0, <Menu.MenuItem
+        id="pc-remix"
+        label={t(plugin.remix.label)}
+        icon={PaintbrushIcon}
+        leadingAccessory={{ type: "icon", icon: PaintbrushIcon }}
+        action={() => {
+            const key = openModal(modalProps =>
+                <RemixModal modalProps={modalProps} close={() => closeModal(key)} url={url} />
+            );
+        }}
+    />);
+};
+
+export function sendRemix(blob: Blob) {
+    const currentChannelId = SelectedChannelStore.getChannelId();
+    const channel = ChannelStore.getChannel(currentChannelId);
+    const reply = PendingReplyStore.getPendingReply(currentChannelId);
+    if (reply) FluxDispatcher.dispatch({ type: "DELETE_PENDING_REPLY", currentChannelId });
+
+    const file = new File([blob], "remix.png", { type: "image/png" });
+    UploadHandler.promptToUpload([file], channel, DraftType.ChannelMessage);
+}
+
+export default definePlugin({
+    name: "Remix",
+    description: () => t(plugin.remix.description),
+    authors: [PcDevs.MrDiamond, PcDevs.meowabyte],
+    tags: ["media", "fun", "utility"],
+
+    contextMenus: {
+        "channel-attach": UploadContextMenuPatch,
+        "message": MessageContextMenuPatch,
+    },
+    managedStyle: css,
+    async start() {
+
+        await requireCreateStickerModal();
+        await requireSettingsMenu();
+    },
+});

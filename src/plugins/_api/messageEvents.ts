@@ -1,0 +1,59 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { plugins, t } from "@api/i18n";
+import { Devs } from "@utils/constants";
+import definePlugin from "@utils/types";
+
+export default definePlugin({
+    name: "MessageEventsAPI",
+    description: () => t(plugins.metadata.api.description.messageEvents),
+    authors: [Devs.Arjix, Devs.hunt, Devs.Ven],
+    tags: ["chat", "developers", "utility"],
+
+    patches: [
+        {
+            find: "#{intl::EDIT_TEXTAREA_HELP}",
+            replacement: {
+                match: /(?<=,channel:\i,message:\i\}\)\.then\().+?(?=\i\.content!==this\.props\.message\.content&&\i\((.+?)\)\})/,
+                replace: (match, args) => "" +
+                    `async ${match}` +
+                    `if(await Plexcord.Api.MessageEvents._handlePreEdit(${args}))` +
+                    "return Promise.resolve({shouldClear:false,shouldRefocus:true});"
+            }
+        },
+        {
+            find: ".handleSendMessage,onResize:",
+            replacement: {
+                match: /(?<=channel:\i\}\)\.then\()(?:async )?(\i=>.+?let (\i)=\i\.\i\.parse\((\i),.+?\.getSendMessageOptions\((\{.+?\})\),.{0,100}?\};)(?=.+?(\i)\.flags=)(?<=\)\(({.+?})\)\.then.+?)/,
+                replace: (m, restCode, parsedMessage, channel, contentOptions, options, props) => "async " + restCode +
+                    `if(await Plexcord.Api.MessageEvents._handlePreSend(${channel}.id,${parsedMessage},${options},${props},${contentOptions}))` +
+                    "return{shouldClear:false,shouldRefocus:true};"
+            }
+        },
+        {
+            find: '("interactionUsernameProfile',
+            replacement: {
+                match: /let\{id:\i}=(\i),{id:\i}=(\i);return \i\.useCallback\((\i)=>\{/,
+                replace: (m, message, channel, event) =>
+                    `const pcMsg=${message},pcChan=${channel};${m}Plexcord.Api.MessageEvents._handleClick(pcMsg,pcChan,${event});`
+            }
+        }
+    ]
+});

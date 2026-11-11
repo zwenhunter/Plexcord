@@ -1,0 +1,834 @@
+.pc-cmdpal-shell {
+    --cmdpal-top: clamp(24px, calc(32vh - 28px), calc(100vh - 504px));
+
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding-top: var(--cmdpal-top);
+    pointer-events: none;
+}
+
+.pc-cmdpal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 45%);
+    backdrop-filter: blur(6px);
+    pointer-events: auto;
+    animation: pc-cmdpal-backdrop-in 150ms ease-out;
+}
+
+@keyframes pc-cmdpal-backdrop-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.pc-cmdpal-root {
+    --cmdpal-bg: #111114;
+    --cmdpal-bg-elevated: #0e0e11;
+    --cmdpal-footer-bg: #151518;
+    --cmdpal-text: #a0a0a0;
+    --cmdpal-text-bright: #f0f0f0;
+    --cmdpal-text-muted: #6b6b6b;
+    --cmdpal-raised: #1c1c20;
+    --cmdpal-soft: #252528;
+    --cmdpal-selection: #2a2a2e;
+    --cmdpal-hairline: rgb(255 255 255 / 12%);
+
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    width: 680px;
+    max-width: 90vw;
+    max-height: min(480px, calc(100vh - var(--cmdpal-top, 24px) - 24px));
+    pointer-events: auto;
+    border-radius: 14px;
+    overflow: hidden;
+    background: var(--cmdpal-bg);
+    border: 1px solid var(--cmdpal-hairline);
+    box-shadow:
+        0 20px 60px rgb(0 0 0 / 50%),
+        0 4px 16px rgb(0 0 0 / 35%);
+    transform-origin: top center;
+    color: var(--cmdpal-text);
+    animation: pc-cmdpal-in 130ms ease-out;
+}
+
+@keyframes pc-cmdpal-in {
+    from {
+        opacity: 0;
+        transform: scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.pc-cmdpal-root-compact {
+    max-height: none;
+}
+
+.pc-cmdpal-root-form {
+    max-height: min(720px, 85vh, calc(100vh - var(--cmdpal-top, 24px) - 24px));
+    height: auto;
+}
+
+.pc-cmdpal-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 56px;
+    padding: 0 18px;
+    flex-shrink: 0;
+    background: var(--cmdpal-bg);
+}
+
+.pc-cmdpal-root:not(.pc-cmdpal-root-compact) .pc-cmdpal-header {
+    border-bottom: 1px solid var(--cmdpal-hairline);
+}
+
+.pc-cmdpal-search-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--cmdpal-text-muted);
+    flex-shrink: 0;
+}
+
+.pc-cmdpal-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 17px;
+    font-weight: 400;
+    font-family: var(--font-primary);
+    color: var(--cmdpal-text-bright);
+    caret-color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-input::placeholder {
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-back {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--cmdpal-hairline);
+    border-radius: 7px;
+    background: var(--cmdpal-raised);
+    color: var(--cmdpal-text);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+        color 100ms ease,
+        background 100ms ease;
+}
+
+.pc-cmdpal-back:hover {
+    background: var(--cmdpal-soft);
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-breadcrumb-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--cmdpal-text);
+}
+
+.pc-cmdpal-chip-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: var(--cmdpal-raised);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.pc-cmdpal-chip-wrap-sm {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+}
+
+.pc-cmdpal-chip-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.pc-cmdpal-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--cmdpal-bg);
+}
+
+.pc-cmdpal-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--cmdpal-soft) transparent;
+}
+
+.pc-cmdpal-results::-webkit-scrollbar {
+    width: 8px;
+}
+
+.pc-cmdpal-results::-webkit-scrollbar-thumb {
+    background: var(--cmdpal-soft);
+    border-radius: 4px;
+}
+
+.pc-cmdpal-results::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.pc-cmdpal-section {
+    padding-bottom: 4px;
+}
+
+.pc-cmdpal-section-label {
+    padding: 10px 10px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 40px;
+    padding: 0 10px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+
+.pc-cmdpal-row-selected {
+    background: var(--cmdpal-selection);
+}
+
+.pc-cmdpal-row-icon {
+    width: 15px;
+    height: 15px;
+    color: var(--cmdpal-text);
+    flex-shrink: 0;
+}
+
+.pc-cmdpal-row-selected .pc-cmdpal-row-icon {
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-row-text {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+
+.pc-cmdpal-row-label {
+    font-size: 14px;
+    font-weight: 450;
+    color: var(--cmdpal-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-cmdpal-row-selected .pc-cmdpal-row-label {
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-row-sublabel {
+    font-size: 12.5px;
+    color: var(--cmdpal-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-cmdpal-row-accessory {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.pc-cmdpal-row-kind {
+    font-size: 12px;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-alias-chip {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-raised);
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-empty {
+    padding: 40px 0;
+    text-align: center;
+    font-size: 14px;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 40px;
+    padding: 0 14px;
+    border-top: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-footer-bg);
+    flex-shrink: 0;
+}
+
+.pc-cmdpal-footer-hint {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--cmdpal-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-cmdpal-footer-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.pc-cmdpal-footer-action {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--cmdpal-text);
+}
+
+.pc-cmdpal-footer-divider {
+    width: 1px;
+    height: 14px;
+    background: var(--cmdpal-hairline);
+}
+
+.pc-cmdpal-shortcut {
+    display: inline-flex;
+    gap: 3px;
+}
+
+.pc-cmdpal-key {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 19px;
+    height: 19px;
+    padding: 0 5px;
+    border-radius: 5px;
+    background: var(--cmdpal-soft);
+    font-size: 11px;
+    font-family: var(--font-primary);
+    color: var(--cmdpal-text);
+}
+
+.pc-cmdpal-panel {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    width: 300px;
+    max-height: 300px;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-bg-elevated);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 50%);
+    overflow: hidden;
+    animation: pc-cmdpal-panel-in 110ms ease-out;
+}
+
+@keyframes pc-cmdpal-panel-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.pc-cmdpal-panel-title {
+    padding: 12px 14px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-panel-list {
+    overflow-y: auto;
+    padding: 0 6px 6px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--cmdpal-soft) transparent;
+}
+
+.pc-cmdpal-panel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 36px;
+    padding: 0 8px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.pc-cmdpal-panel-row-selected {
+    background: var(--cmdpal-selection);
+}
+
+.pc-cmdpal-panel-icon {
+    width: 13px;
+    height: 13px;
+    color: var(--cmdpal-text);
+    flex-shrink: 0;
+}
+
+.pc-cmdpal-panel-label {
+    font-size: 13px;
+    font-weight: 450;
+    color: var(--cmdpal-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pc-cmdpal-panel-row-selected .pc-cmdpal-panel-label {
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-form {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px;
+}
+
+.pc-cmdpal-root-form .pc-cmdpal-body {
+    flex: none;
+    min-height: 0;
+}
+
+.pc-cmdpal-root-form .pc-cmdpal-form {
+    flex: none;
+    overflow: visible;
+}
+
+.pc-cmdpal-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.pc-cmdpal-field-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-field-input,
+.pc-cmdpal-field-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 11px;
+    border-radius: 9px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-raised);
+    font-size: 14px;
+    font-family: var(--font-primary);
+    color: var(--cmdpal-text-bright);
+    outline: none;
+    resize: vertical;
+    transition:
+        border-color 100ms ease,
+        background 100ms ease;
+}
+
+.pc-cmdpal-field-input:focus,
+.pc-cmdpal-field-textarea:focus {
+    border-color: rgb(255 255 255 / 18%);
+    background: var(--cmdpal-soft);
+}
+
+.pc-cmdpal-field-input::placeholder,
+.pc-cmdpal-field-textarea::placeholder {
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-textarea-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pc-cmdpal-markdown-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pc-cmdpal-markdown-preview-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-markdown-preview-body {
+    padding: 10px 11px;
+    border-radius: 9px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-bg-elevated);
+    overflow-wrap: break-word;
+    overflow: hidden;
+}
+
+.pc-cmdpal-message-preview {
+    pointer-events: none;
+}
+
+.pc-cmdpal-preview-attachments {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.pc-cmdpal-preview-image {
+    display: block;
+    max-width: 100%;
+    max-height: 220px;
+    border-radius: 8px;
+    object-fit: contain;
+}
+
+.pc-cmdpal-preview-video {
+    display: block;
+    max-width: 100%;
+    max-height: 220px;
+    border-radius: 8px;
+}
+
+.pc-cmdpal-preview-file {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    max-width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-raised);
+    font-size: 13px;
+    color: var(--cmdpal-text);
+    word-break: break-all;
+}
+
+.pc-cmdpal-attachments {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pc-cmdpal-attachments-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    width: fit-content;
+    padding: 7px 11px;
+    border-radius: 9px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-raised);
+    font-size: 13px;
+    color: var(--cmdpal-text);
+    cursor: pointer;
+}
+
+.pc-cmdpal-attachments-input {
+    display: none;
+}
+
+.pc-cmdpal-attachments-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.pc-cmdpal-attachments-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 9px;
+    border-radius: 8px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-bg-elevated);
+    font-size: 12px;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-attachments-remove {
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-size: 12px;
+    color: var(--text-link, var(--brand-500));
+    cursor: pointer;
+}
+
+.pc-cmdpal-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.pc-cmdpal-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 11px;
+    border-radius: 9px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-raised);
+    font-size: 13px;
+    font-weight: 450;
+    font-family: var(--font-primary);
+    color: var(--cmdpal-text);
+    cursor: pointer;
+    transition:
+        border-color 100ms ease,
+        background 100ms ease,
+        color 100ms ease;
+}
+
+.pc-cmdpal-chip:hover {
+    background: var(--cmdpal-soft);
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-chip-selected {
+    border-color: rgb(255 255 255 / 22%);
+    background: var(--cmdpal-selection);
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-chip-icon {
+    width: 14px;
+    height: 14px;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-picker {
+    position: relative;
+}
+
+.pc-cmdpal-picker-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 11px;
+    border-radius: 9px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-raised);
+    transition:
+        border-color 100ms ease,
+        background 100ms ease;
+}
+
+.pc-cmdpal-picker-input-focused {
+    border-color: rgb(255 255 255 / 18%);
+    background: var(--cmdpal-soft);
+}
+
+.pc-cmdpal-picker-input-field {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-size: 14px;
+    font-family: var(--font-primary);
+    color: var(--cmdpal-text-bright);
+    outline: none;
+}
+
+.pc-cmdpal-picker-input-field::placeholder {
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-picker-list {
+    margin-top: 6px;
+    padding: 4px;
+    border-radius: 10px;
+    border: 1px solid var(--cmdpal-hairline);
+    background: var(--cmdpal-bg-elevated);
+    box-shadow: 0 12px 40px rgb(0 0 0 / 50%);
+    max-height: 180px;
+    min-height: 0;
+    overflow: hidden auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--cmdpal-soft) transparent;
+    animation: pc-cmdpal-panel-in 110ms ease-out;
+}
+
+.pc-cmdpal-picker-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.pc-cmdpal-picker-list::-webkit-scrollbar-thumb {
+    background: var(--cmdpal-soft);
+    border-radius: 4px;
+}
+
+.pc-cmdpal-picker-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    height: 34px;
+    flex-shrink: 0;
+    padding: 0 8px;
+    border-radius: 7px;
+    font-size: 13px;
+    color: var(--cmdpal-text);
+    cursor: pointer;
+}
+
+.pc-cmdpal-picker-item-selected {
+    background: var(--cmdpal-selection);
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-picker-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    object-fit: cover;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-form-error {
+    padding: 9px 11px;
+    border-radius: 9px;
+    border: 1px solid color-mix(in srgb, var(--text-danger) 30%, transparent);
+    background: color-mix(in srgb, var(--text-danger) 8%, transparent);
+    font-size: 13px;
+    color: var(--text-danger);
+}
+
+.pc-cmdpal-detail {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 22px;
+}
+
+.pc-cmdpal-detail-heading {
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-detail-body {
+    font-size: 14px;
+    color: var(--cmdpal-text);
+}
+
+.pc-cmdpal-detail-rows {
+    display: flex;
+    flex-direction: column;
+}
+
+.pc-cmdpal-detail-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--cmdpal-hairline);
+}
+
+.pc-cmdpal-detail-row:last-child {
+    border-bottom: none;
+}
+
+.pc-cmdpal-detail-row-label {
+    font-size: 13px;
+    color: var(--cmdpal-text-muted);
+}
+
+.pc-cmdpal-detail-row-value {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cmdpal-text-bright);
+}
+
+.pc-cmdpal-hotkey-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pc-cmdpal-backdrop,
+    .pc-cmdpal-root,
+    .pc-cmdpal-panel,
+    .pc-cmdpal-picker-list {
+        animation: none;
+    }
+}

@@ -1,0 +1,36 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { Devs } from "@utils/constants";
+import definePlugin from "@utils/types";
+
+export default definePlugin({
+    name: "AltKrispSwitch",
+    description: () => t(plugin.altKrispSwitch.description),
+    authors: [Devs.newwares],
+    tags: ["voice"],
+
+    patches: [
+        {
+            find: ",setNoiseCancellation(",
+            replacement: {
+                match: /(}\),)(.{1,2}\.\i\.dispatch\({type:"AUDIO_SET_NOISE_SUPPRESSION",)/,
+                replace: "$1!$self.shouldCancelSuppression(arguments)&&$2"
+            }
+        }
+    ],
+    shouldCancelSuppression([enableKrisp, options]) {
+        if (options?.section === "Noise Cancellation Popout") {
+            if (enableKrisp) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+});

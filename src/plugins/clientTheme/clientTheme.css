@@ -1,0 +1,26 @@
+.pc-clientTheme-settings {
+    display: flex;
+    flex-direction: column;
+}
+
+.pc-clientTheme-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.pc-clientTheme-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+}
+
+.pc-clientTheme-container [class*="swatch"] {
+    border: thin solid var(--input-border-default) !important;
+}
+
+.pc-clientTheme-buttons-container {
+    margin-top: 8px;
+    display: flex;
+    gap: 4px;
+}

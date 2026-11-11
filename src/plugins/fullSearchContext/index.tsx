@@ -1,0 +1,113 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { plugin, t } from "@api/i18n";
+import { Message } from "@plexcord/discord-types";
+import { Devs } from "@utils/constants";
+import { getIntlMessage } from "@utils/discord";
+import { NoopComponent } from "@utils/react";
+import definePlugin from "@utils/types";
+import { filters, findByCodeLazy, waitFor } from "@webpack";
+import { ChannelStore, ContextMenuApi, UserStore } from "@webpack/common";
+
+const useMessageMenu = findByCodeLazy(".MESSAGE,commandTargetId:");
+
+interface CopyIdMenuItemProps {
+    id: string;
+    label: string;
+}
+
+let CopyIdMenuItem: (props: CopyIdMenuItemProps) => React.ReactElement | null = NoopComponent;
+waitFor(filters.componentByCode('"cannot copy null text"'), m => CopyIdMenuItem = m);
+
+function MessageMenu({ message, channel, onHeightUpdate }) {
+    const canReport = message.author &&
+        !(message.author.id === UserStore.getCurrentUser().id || message.author.system);
+
+    return useMessageMenu({
+        navId: "message-actions",
+        ariaLabel: getIntlMessage("MESSAGE_UTILITIES_A11Y_LABEL"),
+
+        message,
+        channel,
+        canReport,
+        onHeightUpdate,
+        onClose: () => ContextMenuApi.closeContextMenu(),
+
+        textSelection: "",
+        favoriteableType: null,
+        favoriteableId: null,
+        favoriteableName: null,
+        itemHref: void 0,
+        itemSrc: void 0,
+        itemSafeSrc: void 0,
+        itemTextContent: void 0,
+
+        isFullSearchContextMenu: true
+    });
+}
+
+interface MessageActionsProps {
+    message: Message;
+    isFullSearchContextMenu?: boolean;
+}
+
+const contextMenuPatch: NavContextMenuPatchCallback = (children, props: MessageActionsProps) => {
+    if (props?.isFullSearchContextMenu == null) return;
+
+    const group = findGroupChildrenByChildId("devmode-copy-id", children, true);
+    group?.push(
+        CopyIdMenuItem({ id: props.message.author.id, label: getIntlMessage("COPY_ID_AUTHOR") })
+    );
+};
+
+export default definePlugin({
+    name: "FullSearchContext",
+    description: () => t(plugin.fullSearchContext.description),
+    authors: [Devs.Ven, Devs.Aria],
+    tags: ["chat", "utility"],
+
+    patches: [{
+        find: "Listbox navigator was given an unhandled action",
+        replacement: {
+            match: /this(?=\.handleContextMenu\(\i,\i\))/,
+            replace: "$self"
+        }
+    }],
+
+    handleContextMenu(event: React.MouseEvent, message: Message) {
+        const channel = ChannelStore.getChannel(message.channel_id);
+        if (!channel) return;
+
+        event.stopPropagation();
+
+        ContextMenuApi.openContextMenu(event, contextMenuProps =>
+            <MessageMenu
+                message={message}
+                channel={channel}
+                onHeightUpdate={contextMenuProps.onHeightUpdate}
+            />
+        );
+    },
+
+    contextMenus: {
+        "message-actions": contextMenuPatch
+    }
+});

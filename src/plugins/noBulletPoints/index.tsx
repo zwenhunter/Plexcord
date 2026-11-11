@@ -1,0 +1,23 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { Devs } from "@utils/constants";
+import definePlugin from "@utils/types";
+export default definePlugin({
+    name: "NoBulletPoints",
+    description: () => t(plugin.noBulletPoints.description),
+    authors: [Devs.Samwich],
+    tags: ["chat", "utility"],
+    onBeforeMessageSend(channelId, msg) {
+        msg.content = textProcessing(msg.content);
+    },
+});
+
+function textProcessing(text: string): string {
+    return text.replace(/(^|\n)(\s*)([*+-])\s+/g, "$1$2\\$3 ");
+}

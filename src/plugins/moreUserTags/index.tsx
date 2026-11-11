@@ -1,0 +1,196 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2025 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import "./styles.css";
+
+import { plugin, t } from "@api/i18n";
+import { addMemberListDecorator } from "@api/MemberListDecorators";
+import { addMessageDecoration } from "@api/MessageDecorations";
+import { addNicknameIcon } from "@api/NicknameIcons";
+import { Channel, Message, User } from "@plexcord/discord-types";
+import { Devs, PcDevs } from "@utils/constants";
+import { classNameFactory } from "@utils/css";
+import { getCurrentChannel, getIntlMessage } from "@utils/discord";
+import definePlugin from "@utils/types";
+import { ChannelStore, GuildStore, PermissionsBits, SelectedChannelStore, UserStore } from "@webpack/common";
+
+import { computePermissions, getTags, Tag } from "./consts";
+import { settings } from "./settings";
+import { TagSettings } from "./types";
+
+const cl = classNameFactory("pc-mut-");
+
+const genTagTypes = () => {
+    let i = 100;
+    const obj = {};
+
+    for (const { name } of getTags()) {
+        obj[name] = ++i;
+        obj[i] = name;
+    }
+
+    return obj;
+};
+
+export default definePlugin({
+    name: "MoreUserTags",
+    description: () => t(plugin.moreUserTags.description),
+    authors: [Devs.Cyn, Devs.TheSun, Devs.RyanCaoDev, PcDevs.MutanPlex, Devs.LordElias, Devs.AutumnVN, PcDevs.Hen],
+    tags: ["organisation", "friends", "appearance"],
+    dependencies: ["MemberListDecoratorsAPI", "NicknameIconsAPI", "MessageDecorationsAPI"],
+    settings,
+
+    patches: [
+        // Make discord actually use our tags
+        {
+            find: ".STAFF_ONLY_DM:",
+            replacement: [
+                {
+                    match: /(?<=type:(\i).*?\.BOT:.{0,25})default:(\i)=/,
+                    replace: "default:$2=$self.getTagText($self.localTags[$1]);",
+                },
+                {
+                    match: /(?<=type:\i.*?)\.BOT:(?=default:)/,
+                    replace: "$&return null;",
+                    predicate: () => settings.store.dontShowBotTag
+                },
+            ],
+        }
+    ],
+    start() {
+        addNicknameIcon("MoreUserTags", props => {
+            const tagId = this.getTag({
+                user: UserStore.getUser(props.userId),
+                channel: getCurrentChannel(),
+                channelId: this.getChannelId(),
+                isChat: false
+            });
+
+            return tagId && <Tag
+                type={tagId}
+                verified={false}>
+            </Tag>;
+        });
+
+        addMessageDecoration("MoreUserTags", props => {
+            const tagId = this.getTag({
+                message: props.message,
+                user: UserStore.getUser(props.message.author.id),
+                channelId: props.message.channel_id,
+                isChat: true
+            });
+
+            return tagId != null ? <Tag
+                useRemSizes={true}
+                className={cl("message-tag", props.message.author.isVerifiedBot() && "message-verified")}
+                type={tagId}
+                verified={false}>
+            </Tag> : null;
+        });
+
+        addMemberListDecorator("MoreUserTags", props => {
+            const tagId = this.getTag({
+                user: props.user,
+                channel: getCurrentChannel(),
+                channelId: this.getChannelId(),
+                isChat: false
+            });
+
+            return tagId ? <Tag
+                type={tagId}
+                verified={false}>
+            </Tag> : null;
+        });
+
+        const tagSettings = settings.store.tagSettings || {} as TagSettings;
+        for (const tag of getTags()) {
+            tagSettings[tag.name] ??= {
+                showInChat: true,
+                showInNotChat: true,
+                text: ""
+            };
+        }
+
+        settings.store.tagSettings = tagSettings;
+    },
+    localTags: genTagTypes(),
+    getChannelId() {
+        return SelectedChannelStore.getChannelId();
+    },
+
+    getTagText(tagName: string) {
+        if (!tagName) return getIntlMessage("APP_TAG");
+        const tag = getTags().find(({ name }) => tagName === name);
+        if (!tag) return tagName || getIntlMessage("APP_TAG");
+
+        const customText = settings.store.tagSettings?.[tag.name]?.text;
+        return customText || tag.displayName;
+    },
+
+    getTag({
+        message, user, channelId, isChat, channel
+    }: {
+        message?: Message,
+        user?: User,
+        channel?: Channel & { isForumPost(): boolean; isMediaPost(): boolean; },
+        channelId?: string;
+        isChat?: boolean;
+    }): number | null {
+        const settings = this.settings.store;
+
+        if (!user) return null;
+        if (isChat && user.id === "1") return null;
+        if (user.bot && settings.dontShowForBots) return null;
+
+        channel ??= ChannelStore.getChannel(channelId!) as any;
+        if (!channel) return null;
+
+        const perms = this.getPermissions(user, channel);
+
+        for (const tag of getTags()) {
+            if (isChat && !settings.tagSettings[tag.name]?.showInChat)
+                continue;
+            if (!isChat && !settings.tagSettings[tag.name]?.showInNotChat)
+                continue;
+
+            // If the owner tag is disabled, and the user is the owner of the guild,
+            // avoid adding other tags because the owner will always match the condition for them
+            if (
+                (tag.name !== "OWNER" &&
+                    GuildStore.getGuild(channel?.guild_id)?.ownerId ===
+                    user.id &&
+                    isChat &&
+                    !settings.tagSettings.OWNER.showInChat) ||
+                (GuildStore.getGuild(channel?.guild_id)?.ownerId ===
+                    user.id &&
+                    !isChat &&
+                    !settings.tagSettings.OWNER.showInNotChat)
+            )
+                continue;
+
+            if ("permissions" in tag ?
+                tag.permissions.some(perm => perms.includes(perm)) :
+                (typeof tag.condition === "function" && tag.condition(message!, user, channel))) {
+
+                return this.localTags[tag.name];
+            }
+        }
+
+        return null;
+    },
+    getPermissions(user: User, channel: Channel): string[] {
+        const guild = GuildStore.getGuild(channel?.guild_id);
+        if (!guild) return [];
+
+        const permissions = computePermissions({ user, context: guild, overwrites: channel.permissionOverwrites });
+        return Object.entries(PermissionsBits)
+            .map(([perm, permInt]) =>
+                permissions & permInt ? perm : ""
+            )
+            .filter(Boolean);
+    },
+});

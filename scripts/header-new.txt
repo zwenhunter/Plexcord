@@ -1,0 +1,3 @@
+Plexcord, a modification for Discord's desktop app
+Copyright (c) {year} {author}
+SPDX-License-Identifier: GPL-3.0-or-later

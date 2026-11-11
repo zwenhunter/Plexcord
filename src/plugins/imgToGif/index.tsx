@@ -1,0 +1,168 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { ApplicationCommandInputType, ApplicationCommandOptionType, sendBotMessage } from "@api/Commands";
+import { plugin, t } from "@api/i18n";
+import { CommandArgument, CommandContext } from "@plexcord/discord-types";
+import { PcDevs } from "@utils/constants";
+import definePlugin from "@utils/types";
+import { DraftType, UploadAttachmentStore, UploadHandler, UploadManager } from "@webpack/common";
+import { applyPalette, GIFEncoder, quantize } from "gifenc";
+
+const FRAMES = 1;
+
+function loadImage(source: File | string) {
+    const isFile = source instanceof File;
+    const url = isFile ? URL.createObjectURL(source) : source;
+
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            if (isFile) URL.revokeObjectURL(url);
+            resolve(img);
+        };
+        img.onerror = (event, _source, _lineno, _colno, err) => {
+            if (isFile) URL.revokeObjectURL(url);
+            reject(err || event);
+        };
+        img.crossOrigin = "Anonymous";
+        img.src = url;
+    });
+}
+
+async function resolveImage(options: CommandArgument[], ctx: CommandContext): Promise<{ image: File | null; width: number | null; height: number | null; }> {
+    let image: File | null = null;
+    let width: number | null = null;
+    let height: number | null = null;
+
+    for (const opt of options) {
+        switch (opt.name) {
+            case "image":
+                const upload = UploadAttachmentStore.getUpload(ctx.channel.id, opt.name, DraftType.SlashCommand);
+                if (upload) {
+                    if (!upload.isImage) {
+                        UploadManager.clearAll(ctx.channel.id, DraftType.SlashCommand);
+                        throw t(plugin.imgToGif.error.notImage);
+                    }
+                    image = upload.item.file;
+                }
+                break;
+            case "width":
+                width = Number(opt.value);
+                break;
+            case "height":
+                height = Number(opt.value);
+                break;
+        }
+    }
+
+    UploadManager.clearAll(ctx.channel.id, DraftType.SlashCommand);
+    return { image, width, height };
+}
+
+export default definePlugin({
+    name: "ImgToGif",
+    description: () => t(plugin.imgToGif.description),
+    authors: [PcDevs.zyqunix, PcDevs.MutanPlex],
+    tags: ["media", "commands", "utility"],
+
+    commands: [
+        {
+            inputType: ApplicationCommandInputType.BUILT_IN,
+            name: "imgtogif",
+            description: () => t(plugin.imgToGif.command.imgToGif.description),
+            options: [
+                {
+                    name: "image",
+                    description: () => t(plugin.imgToGif.command.imgToGif.image),
+                    type: ApplicationCommandOptionType.ATTACHMENT
+                },
+                {
+                    name: "width",
+                    description: () => t(plugin.imgToGif.command.imgToGif.width),
+                    type: ApplicationCommandOptionType.INTEGER
+                },
+                {
+                    name: "height",
+                    description: () => t(plugin.imgToGif.command.imgToGif.height),
+                    type: ApplicationCommandOptionType.INTEGER
+                }
+            ],
+            execute: async (opts, cmdCtx) => {
+                try {
+                    const { image, width, height } = await resolveImage(opts, cmdCtx);
+                    if (!image) throw t(plugin.imgToGif.error.noImage);
+
+                    const avatar = await loadImage(image);
+
+                    let gifWidth: number;
+                    let gifHeight: number;
+
+                    if (width && height) {
+                        gifWidth = width;
+                        gifHeight = height;
+                    } else if (width) {
+                        gifWidth = width;
+                        gifHeight = Math.round((avatar.height / avatar.width) * width);
+                    } else if (height) {
+                        gifHeight = height;
+                        gifWidth = Math.round((avatar.width / avatar.height) * height);
+                    } else {
+                        gifWidth = avatar.width;
+                        gifHeight = avatar.height;
+                    }
+
+                    const gif = GIFEncoder();
+                    const canvas = document.createElement("canvas");
+                    canvas.width = gifWidth;
+                    canvas.height = gifHeight;
+                    const ctx = canvas.getContext("2d")!;
+
+                    UploadManager.clearAll(cmdCtx.channel.id, DraftType.SlashCommand);
+
+                    for (let i = 0; i < FRAMES; i++) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(avatar, 0, 0, avatar.width, avatar.height, 0, 0, canvas.width, canvas.height);
+
+                        const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        const palette = quantize(data, 256);
+                        const index = applyPalette(data, palette);
+
+                        gif.writeFrame(index, canvas.width, canvas.height, {
+                            transparent: true,
+                            palette,
+                        });
+                    }
+
+                    gif.finish();
+                    const originalName = image.name ? image.name.replace(/\.[^/.]+$/, "") : "converted";
+                    const file = new File([new Uint8Array(gif.bytesView())], `${originalName}.gif`, { type: "image/gif" });
+                    setTimeout(() => UploadHandler.promptToUpload([file], cmdCtx.channel, DraftType.ChannelMessage), 10);
+                } catch (err) {
+                    UploadManager.clearAll(cmdCtx.channel.id, DraftType.SlashCommand);
+                    sendBotMessage(cmdCtx.channel.id, {
+                        author: {
+                            username: "Plexcord"
+                        }, content: String(err)
+                    });
+                }
+            },
+        },
+    ]
+});

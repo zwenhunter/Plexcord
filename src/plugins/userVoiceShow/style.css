@@ -1,0 +1,46 @@
+.pc-uvs-speaker {
+    color: var(--interactive-icon-default);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pc-uvs-clickable {
+    cursor: pointer;
+}
+
+.pc-uvs-clickable:hover {
+    color: var(--interactive-icon-hover);
+}
+
+.pc-uvs-profile-speaker {
+    height: var(--custom-nickname-icon-size);
+    margin-right: 4px;
+    transform: translateY(1.3px);
+}
+
+.pc-uvs-tooltip-container {
+    max-width: 50vw;
+}
+
+.pc-uvs-tooltip-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pc-uvs-name {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pc-uvs-guild-icon {
+    border-radius: 100%;
+    align-self: center;
+}
+
+.pc-uvs-pc-members {
+    display: flex;
+    gap: 6px;
+}

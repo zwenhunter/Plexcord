@@ -1,0 +1,191 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { Settings, SettingsStore, type ThemeActivationMode } from "@api/Settings";
+import { rewriteLegacyClasses } from "@main/themes/rewrite";
+import { ThemeStore } from "@plexcord/discord-types";
+import { createAndAppendStyle } from "@utils/css";
+import { isNonNullish } from "@utils/guards";
+import { PopoutWindowStore } from "@webpack/common";
+
+import { coreStyleRootNode, managedStyleRootNode, plexcordRootNode, userStyleRootNode } from "./Styles";
+
+let style: HTMLStyleElement;
+let themesStyle: HTMLStyleElement;
+
+const themeChangeListeners = new Set<() => void>();
+
+function getThemeActivationMode(themeId: string) {
+    return Settings.themeActivationModes?.[themeId] ?? "always";
+}
+
+function shouldApplyTheme(mode: ThemeActivationMode, activeTheme?: "light" | "dark") {
+    if (mode === "always") return true;
+    if (!activeTheme) return false;
+    return mode === activeTheme;
+}
+
+async function toggle(isEnabled: boolean) {
+    if (!style) {
+        if (isEnabled) {
+            style = createAndAppendStyle("plexcord-custom-css", userStyleRootNode);
+            PlexcordNative.quickCss.addChangeListener(css => {
+                style.textContent = css;
+                // At the time of writing this, changing textContent resets the disabled state
+                style.disabled = !Settings.useQuickCss;
+            });
+            style.textContent = await PlexcordNative.quickCss.get();
+        }
+    } else
+        style.disabled = !isEnabled;
+}
+
+// for cleanup
+let previousThemeBlobObjectURLs = [] as string[];
+
+async function initThemes() {
+    themesStyle ??= createAndAppendStyle("plexcord-themes", userStyleRootNode);
+
+    const { enabledThemeLinks, enabledThemes } = Settings;
+
+    const { ThemeStore } = require("@webpack/common/stores") as typeof import("@webpack/common/stores");
+
+    // "darker" and "midnight" both count as dark
+    // This function is first called on DOMContentLoaded, so ThemeStore may not have been loaded yet
+    const activeTheme = ThemeStore == null
+        ? undefined
+        : ThemeStore.theme === "light" ? "light" : "dark";
+
+    const links = new Set<string>();
+
+    for (const rawLink of enabledThemeLinks) {
+        const match = /^@(light|dark) (.*)/.exec(rawLink);
+        const link = (match?.[2] ?? rawLink).trim();
+        const mode = getThemeActivationMode(rawLink);
+
+        if (shouldApplyTheme(mode, activeTheme)) {
+            links.add(IS_WEB ? link : `plexcord:///online-themes/${encodeURIComponent(link)}`);
+        }
+    }
+
+    if (IS_WEB) {
+        previousThemeBlobObjectURLs.forEach(url => URL.revokeObjectURL(url));
+
+        const themesToApply = enabledThemes.filter(theme =>
+            shouldApplyTheme(getThemeActivationMode(theme), activeTheme)
+        );
+
+        const objectUrls = await Promise.all(themesToApply.map(async theme => {
+            const themeData = await PlexcordNative.themes.getThemeData(theme);
+            if (!themeData) return null;
+
+            const blob = new Blob([rewriteLegacyClasses(themeData)], { type: "text/css" });
+            return URL.createObjectURL(blob);
+        }));
+
+        previousThemeBlobObjectURLs = objectUrls.filter(isNonNullish);
+        previousThemeBlobObjectURLs.forEach(url => links.add(url));
+    } else {
+        const version = Date.now();
+        for (const theme of enabledThemes) {
+            const mode = getThemeActivationMode(theme);
+            if (!shouldApplyTheme(mode, activeTheme)) continue;
+            links.add(`plexcord:///themes/${theme}?v=${version}`);
+        }
+    }
+
+    themesStyle.textContent = Array.from(links).map(link => `@import url("${link.trim()}");`).join("\n");
+    updatePopoutWindows();
+    themeChangeListeners.forEach(listener => listener());
+}
+
+function applyToPopout(popoutWindow: Window | undefined, key: string) {
+    if (!popoutWindow?.document) return;
+
+    const doc = popoutWindow.document;
+
+    doc.querySelector("plexcord-root")?.remove();
+
+    const clonedRoot = plexcordRootNode.cloneNode(false) as HTMLElement;
+
+    clonedRoot.append(
+        coreStyleRootNode.cloneNode(true),
+        managedStyleRootNode.cloneNode(true)
+    );
+
+    if (key !== "DISCORD_OutOfProcessOverlay") {
+        clonedRoot.append(userStyleRootNode.cloneNode(true));
+    }
+
+    doc.documentElement.appendChild(clonedRoot);
+}
+
+function updatePopoutWindows() {
+    if (!PopoutWindowStore) return;
+
+    for (const key of PopoutWindowStore.getWindowKeys()) {
+        applyToPopout(PopoutWindowStore.getWindow(key), key);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    if (IS_USERSCRIPT) return;
+
+    initThemes();
+
+    toggle(Settings.useQuickCss);
+    SettingsStore.addChangeListener("useQuickCss", toggle);
+
+    SettingsStore.addChangeListener("enabledThemeLinks", initThemes);
+    SettingsStore.addChangeListener("enabledThemes", initThemes);
+    SettingsStore.addChangeListener("themeActivationModes", initThemes);
+
+    window.addEventListener("message", event => {
+        const { discordPopoutEvent } = event.data || {};
+        if (discordPopoutEvent?.type !== "loaded") return;
+
+        applyToPopout(PopoutWindowStore.getWindow(discordPopoutEvent.key), discordPopoutEvent.key);
+    });
+
+    if (!IS_WEB) {
+        PlexcordNative.quickCss.addThemeChangeListener(initThemes);
+    }
+}, { once: true });
+
+export function initQuickCssThemeStore(themeStore: ThemeStore) {
+    if (IS_USERSCRIPT) return;
+
+    initThemes();
+
+    let currentTheme = themeStore.theme;
+    themeStore.addChangeListener(() => {
+        if (currentTheme === themeStore.theme) return;
+
+        currentTheme = themeStore.theme;
+        initThemes();
+    });
+}
+
+export function addThemeChangeListener(listener: () => void) {
+    themeChangeListeners.add(listener);
+}
+
+export function removeThemeChangeListener(listener: () => void) {
+    themeChangeListeners.delete(listener);
+}

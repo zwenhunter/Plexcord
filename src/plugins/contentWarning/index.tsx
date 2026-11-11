@@ -1,0 +1,182 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import "./styles.css";
+
+import * as DataStore from "@api/DataStore";
+import { plugin, t } from "@api/i18n";
+import { definePluginSettings } from "@api/Settings";
+import { Button } from "@components/Button";
+import { Flex } from "@components/Flex";
+import { Heading } from "@components/Heading";
+import { DeleteIcon } from "@components/Icons";
+import { PcDevs } from "@utils/constants";
+import { classNameFactory } from "@utils/css";
+import { useForceUpdater } from "@utils/react";
+import definePlugin, { OptionType } from "@utils/types";
+import { TextInput, useState } from "@webpack/common";
+
+const cl = classNameFactory("pc-content-warning-");
+const WORDS_KEY = "ContentWarning_words";
+
+let triggerWords = [""];
+
+function safeMatchesRegex(s: string, r: string) {
+    if (r === "") return false;
+    try {
+        return s.match(new RegExp(r.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    } catch {
+        return false;
+    }
+}
+
+function TriggerContainer({ child }) {
+    const [visible, setVisible] = useState(false);
+    const { onClick } = settings.store;
+
+    const className = onClick ? cl("container") : "";
+
+    if (visible) {
+        return child;
+    } else {
+        return (
+            <div
+                className={className}
+                onClick={() => onClick && setVisible(true)}
+                onMouseEnter={event => {
+                    if (!onClick) {
+                        event.currentTarget.className = cl("enter");
+                    }
+                }}
+                onMouseLeave={event => {
+                    if (!onClick) {
+                        event.currentTarget.className = cl("leave");
+                    }
+                }}
+            >
+                {child}
+            </div>
+        );
+    }
+}
+
+function FlaggedInput({ index, forceUpdate }) {
+    const [value, setValue] = useState(triggerWords[index]);
+
+    if (value !== triggerWords[index]) {
+        setValue(triggerWords[index]);
+    }
+
+    const isLast = index === triggerWords.length - 1;
+
+    const updateValue = v => {
+        triggerWords[index] = v;
+        setValue(v);
+        DataStore.set(WORDS_KEY, triggerWords);
+
+        if (isLast) {
+            triggerWords.push("");
+            forceUpdate();
+        }
+    };
+
+    const removeSelf = () => {
+        if (triggerWords.length === 1) {
+            return;
+        }
+        triggerWords = triggerWords.slice(0, index).concat(triggerWords.slice(index + 1));
+        forceUpdate();
+    };
+
+    return (<Flex flexDirection="row">
+        <div style={{ flexGrow: 1 }}>
+            <TextInput
+                placeholder={t(plugin.contentWarning.option.flagged.placeholder)}
+                spellCheck={false}
+                value={value}
+                onChange={updateValue}
+            />
+        </div>
+
+        <Button
+            onClick={removeSelf}
+            variant="none"
+            size="small"
+            style={{
+                padding: 0,
+                color: "var(--primary-400)",
+                transition: "color 0.2s ease-in-out",
+                opacity: isLast ? "0%" : "100%"
+            }}>
+            <DeleteIcon />
+        </Button>
+    </Flex>);
+}
+
+function FlaggedWords() {
+    const forceUpdate = useForceUpdater();
+
+    const inputs = triggerWords.map((_, idx) => {
+        return (
+            <FlaggedInput
+                key={idx}
+                index={idx}
+                forceUpdate={forceUpdate}
+            />
+        );
+    });
+    return (
+        <>
+            <Heading tag="h4">{t(plugin.contentWarning.option.flagged.flagged)}</Heading>
+            {inputs}
+        </>
+    );
+}
+
+const settings = definePluginSettings({
+    flagged: {
+        label: () => t(plugin.contentWarning.option.flagged.label),
+        type: OptionType.COMPONENT,
+        component: () => <FlaggedWords />,
+    },
+    onClick: {
+        label: () => t(plugin.contentWarning.option.onClick.label),
+        description: () => t(plugin.contentWarning.option.onClick.description),
+        type: OptionType.BOOLEAN,
+        default: false
+    }
+});
+
+export default definePlugin({
+    name: "ContentWarning",
+    description: () => t(plugin.contentWarning.description),
+    authors: [PcDevs.camila314],
+    tags: ["chat", "privacy"],
+    settings,
+
+    patches: [
+        {
+            find: ".VOICE_HANGOUT_INVITE?",
+            replacement: {
+                match: /(compact:\i}=\i.+?)(\(0,.+\}\)\]\}\))/,
+                replace: "$1 $self.modify(arguments[0].message,$2)"
+            }
+        }
+    ],
+
+    modify(message, child) {
+        if (triggerWords.some(w => safeMatchesRegex(message.content, w))) {
+            return <TriggerContainer child={child} />;
+        } else {
+            return child;
+        }
+    },
+
+    async start() {
+        triggerWords = await DataStore.get(WORDS_KEY) ?? [""];
+    }
+});

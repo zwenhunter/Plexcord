@@ -1,0 +1,32 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { IpcMainInvokeEvent } from "electron";
+import { request } from "https";
+
+// These links don't support CORS, so this has to be native
+const validRedirectUrls = /^https:\/\/(spotify\.link|s\.team)\/.+$/;
+
+function getRedirect(url: string, hops = 0) {
+    return new Promise<string>((resolve, reject) => {
+        const req = request(new URL(url), { method: "HEAD" }, res => {
+            resolve(
+                res.headers.location && hops < 5
+                    ? getRedirect(res.headers.location, hops + 1)
+                    : url
+            );
+        });
+        req.on("error", reject);
+        req.end();
+    });
+}
+
+export async function resolveRedirect(_: IpcMainInvokeEvent, url: string) {
+    if (!validRedirectUrls.test(url)) return url;
+
+    return getRedirect(url);
+}

@@ -1,0 +1,416 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { plugin, t } from "@api/i18n";
+import { addMessageAccessory, removeMessageAccessory } from "@api/MessageAccessories";
+import { updateMessage } from "@api/MessageUpdater";
+import { definePluginSettings } from "@api/Settings";
+import { getUserSettingLazy } from "@api/UserSettings";
+import { Button } from "@components/Button";
+import { Span } from "@components/Span";
+import { Channel, Message } from "@plexcord/discord-types";
+import { Devs } from "@utils/constants.js";
+import { Queue } from "@utils/Queue";
+import definePlugin, { OptionType } from "@utils/types";
+import { findComponentByCodeLazy, findComponentLazy, findCssClassesLazy } from "@webpack";
+import { ChannelStore, Constants, GuildStore, IconUtils, MessageStore, Parser, PermissionsBits, PermissionStore, RestAPI, UserStore } from "@webpack/common";
+import { ComponentType, JSX } from "react";
+
+const messageCache = new Map<string, {
+    message?: Message;
+    fetched: boolean;
+}>();
+
+const getCacheKey = (channelId: string, messageId: string) => `${channelId}:${messageId}`;
+
+const Embed = findComponentLazy(m => m.prototype?.renderSuppressButton);
+const ChannelMessage = findComponentByCodeLazy("childrenExecutedCommand:", ".hideAccessories");
+let AutoModEmbed: ComponentType<any> = () => null;
+
+const EmbedClasses = findCssClassesLazy("embedAuthorIcon", "embedAuthor", "embedAuthor", "embedMargin");
+
+const MessageDisplayCompact = getUserSettingLazy("textAndImages", "messageDisplayCompact")!;
+
+const messageLinkRegex = /(?<!<)https?:\/\/(?:\w+\.)?discord(?:app)?\.com\/channels\/(?:\d{17,20}|@me)\/(\d{17,20})\/(\d{17,20})/g;
+const tenorRegex = /^https:\/\/(?:www\.)?tenor\.com\//;
+
+interface Attachment {
+    height: number;
+    width: number;
+    url: string;
+    proxyURL?: string;
+}
+
+interface MessageEmbedProps {
+    message: Message;
+    channel: Channel;
+}
+
+const messageFetchQueue = new Queue();
+
+const settings = definePluginSettings({
+    messageBackgroundColor: {
+        label: () => t(plugin.messageLinkEmbeds.option.messageBackgroundColor.label),
+        description: () => t(plugin.messageLinkEmbeds.option.messageBackgroundColor.description),
+        type: OptionType.BOOLEAN
+    },
+    automodEmbeds: {
+        label: () => t(plugin.messageLinkEmbeds.option.automodEmbeds.label),
+        description: () => t(plugin.messageLinkEmbeds.option.automodEmbeds.description),
+        type: OptionType.SELECT,
+        options: [
+            {
+                label: () => t(plugin.messageLinkEmbeds.option.automodEmbeds.always),
+                value: "always"
+            },
+            {
+                label: () => t(plugin.messageLinkEmbeds.option.automodEmbeds.prefer),
+                value: "prefer"
+            },
+            {
+                label: () => t(plugin.messageLinkEmbeds.option.automodEmbeds.never),
+                value: "never",
+                default: true
+            }
+        ]
+    },
+    listMode: {
+        label: () => t(plugin.messageLinkEmbeds.option.listMode.label),
+        description: () => t(plugin.messageLinkEmbeds.option.listMode.description),
+        type: OptionType.SELECT,
+        options: [
+            {
+                label: () => t(plugin.messageLinkEmbeds.option.listMode.blacklist),
+                value: "blacklist",
+                default: true
+            },
+            {
+                label: () => t(plugin.messageLinkEmbeds.option.listMode.whitelist),
+                value: "whitelist"
+            }
+        ]
+    },
+    idList: {
+        displayName: t(plugin.messageLinkEmbeds.option.idList.label),
+        label: () => t(plugin.messageLinkEmbeds.option.idList.label),
+        description: () => t(plugin.messageLinkEmbeds.option.idList.description),
+        type: OptionType.STRING,
+        default: "",
+        multiline: true,
+    },
+    clearMessageCache: {
+        label: () => t(plugin.messageLinkEmbeds.option.clearMessageCache.label),
+        type: OptionType.COMPONENT,
+        component: () => (
+            <Button onClick={() => messageCache.clear()}>
+                {t(plugin.messageLinkEmbeds.option.clearMessageCache.description)}
+            </Button>
+        )
+    }
+});
+
+async function fetchMessage(channelId: string, messageId: string) {
+    const cacheKey = getCacheKey(channelId, messageId);
+
+    const cached = messageCache.get(cacheKey);
+    if (cached) return cached.message;
+
+    messageCache.set(cacheKey, { fetched: false });
+
+    const res = await RestAPI.get({
+        url: Constants.Endpoints.MESSAGES(channelId),
+        query: {
+            limit: 1,
+            around: messageId
+        },
+        retries: 2
+    }).catch(() => null);
+
+    const msg = res?.body?.[0];
+    if (!msg) return;
+
+    if (msg.id !== messageId) return;
+
+    const message = MessageStore.getMessages(msg.channel_id).receiveMessage(msg).get(msg.id);
+    if (!message) return;
+
+    messageCache.set(cacheKey, {
+        message,
+        fetched: true
+    });
+
+    return message;
+}
+
+function getImages(message: Message): Attachment[] {
+    const attachments: Attachment[] = [];
+
+    for (const { content_type, height, width, url, proxy_url } of message.attachments ?? []) {
+        if (content_type?.startsWith("image/"))
+            attachments.push({
+                height: height!,
+                width: width!,
+                url: url,
+                proxyURL: proxy_url!
+            });
+    }
+
+    for (const { type, image, thumbnail, url } of message.embeds ?? []) {
+        if (type === "image")
+            attachments.push({ ...(image ?? thumbnail!) });
+        else if (url && type === "gifv" && !tenorRegex.test(url))
+            attachments.push({
+                height: thumbnail!.height,
+                width: thumbnail!.width,
+                url
+            });
+    }
+
+    return attachments;
+}
+
+function noContent(attachments: number, embeds: number) {
+    if (!attachments && !embeds) return "";
+    if (!attachments) return `[${t(plugin.messageLinkEmbeds.noContent.noAttachments, { count: embeds, s: embeds !== 1 ? "s" : "" })}]`;
+    if (!embeds) return `[${t(plugin.messageLinkEmbeds.noContent.noEmbeds, { count: attachments, s: attachments !== 1 ? "s" : "" })}]`;
+    return `[${t(plugin.messageLinkEmbeds.noContent.both, { attachments, embeds, attachmentsS: attachments !== 1 ? "s" : "", embedsS: embeds !== 1 ? "s" : "" })}]`;
+}
+
+function requiresRichEmbed(message: Message) {
+    if (message.components.length) return true;
+    if (message.attachments.some(a => !a.content_type?.startsWith("image/"))) return true;
+    if (message.embeds.some(e => e.type !== "image" && (e.type !== "gifv" || tenorRegex.test(e.url!)))) return true;
+
+    return false;
+}
+
+function computeWidthAndHeight(width: number, height: number) {
+    const maxWidth = 400;
+    const maxHeight = 300;
+
+    if (width > height) {
+        const adjustedWidth = Math.min(width, maxWidth);
+        return { width: adjustedWidth, height: Math.round(height / (width / adjustedWidth)) };
+    }
+
+    const adjustedHeight = Math.min(height, maxHeight);
+    return { width: Math.round(width / (height / adjustedHeight)), height: adjustedHeight };
+}
+
+function withEmbeddedBy(message: Message, embeddedBy: string[]) {
+    return new Proxy(message, {
+        get(_, prop) {
+            if (prop === "plexcordEmbeddedBy") return embeddedBy;
+            // @ts-ignore ts so bad
+            return Reflect.get(...arguments);
+        }
+    });
+}
+
+function MessageEmbedAccessory({ message }: { message: Message; }) {
+    // @ts-ignore
+    const embeddedBy: string[] = message.plexcordEmbeddedBy ?? [];
+
+    const accessories = [] as (JSX.Element | null)[];
+
+    const seen = new Set<string>();
+    let count = 0;
+    for (const [_, channelId, messageId] of message.content!.matchAll(messageLinkRegex)) {
+        if (embeddedBy.includes(messageId) || embeddedBy.length > 2 || seen.has(messageId) || count >= 5) {
+            continue;
+        }
+
+        seen.add(messageId);
+        count++;
+
+        const linkedChannel = ChannelStore.getChannel(channelId);
+        if (!linkedChannel || (!linkedChannel.isPrivate() && !PermissionStore.can(PermissionsBits.VIEW_CHANNEL, linkedChannel))) {
+            continue;
+        }
+
+        const { listMode, idList } = settings.store;
+
+        const isListed = [linkedChannel.guild_id, channelId, message.author.id].some(id => id && idList.includes(id));
+
+        if (listMode === "blacklist" && isListed) continue;
+        if (listMode === "whitelist" && !isListed) continue;
+
+        const cacheKey = getCacheKey(channelId, messageId);
+        let linkedMessage = messageCache.get(cacheKey)?.message;
+        if (!linkedMessage) {
+            linkedMessage ??= MessageStore.getMessage(channelId, messageId);
+            if (linkedMessage) {
+                messageCache.set(cacheKey, { message: linkedMessage, fetched: true });
+            } else {
+
+                messageFetchQueue.unshift(() => fetchMessage(channelId, messageId)
+                    .then(m => m && updateMessage(message.channel_id, message.id))
+                );
+                continue;
+            }
+        }
+
+        const messageProps: MessageEmbedProps = {
+            message: withEmbeddedBy(linkedMessage, [...embeddedBy, message.id]),
+            channel: linkedChannel
+        };
+
+        const type = settings.store.automodEmbeds;
+        accessories.push(
+            type === "always" || (type === "prefer" && !requiresRichEmbed(linkedMessage))
+                ? <AutomodEmbedAccessory {...messageProps} />
+                : <ChannelMessageEmbedAccessory {...messageProps} />
+        );
+    }
+
+    return accessories.length ? <>{accessories}</> : null;
+}
+
+function getChannelLabelAndIconUrl(channel: Channel) {
+    if (channel.isDM()) return [t(plugin.messageLinkEmbeds.dm), IconUtils.getUserAvatarURL(UserStore.getUser(channel.recipients[0]))];
+    if (channel.isGroupDM()) return [t(plugin.messageLinkEmbeds.groupDm), IconUtils.getChannelIconURL(channel)];
+    return [t(plugin.messageLinkEmbeds.server), IconUtils.getGuildIconURL(GuildStore.getGuild(channel.guild_id))];
+}
+
+function ChannelMessageEmbedAccessory({ message, channel }: MessageEmbedProps): JSX.Element | null {
+    const compact = MessageDisplayCompact.useSetting();
+
+    const dmReceiver = UserStore.getUser(ChannelStore.getChannel(channel.id).recipients?.[0]);
+
+    const [channelLabel, iconUrl] = getChannelLabelAndIconUrl(channel);
+
+    return (
+        <Embed
+            embed={{
+                rawDescription: "",
+                color: "var(--background-base-lower)",
+                author: {
+                    name: <Span size="xs" weight="medium">
+                        <span>{channelLabel} - </span>
+                        {Parser.parse(channel.isDM() ? `<@${dmReceiver.id}>` : `<#${channel.id}>`)}
+                    </Span>,
+                    iconProxyURL: iconUrl
+                }
+            }}
+            renderDescription={() => (
+                <div key={message.id} style={!settings.store.messageBackgroundColor ? undefined : {
+                    backgroundColor: "var(--background-base-lower)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "8px",
+                    paddingBottom: "8px",
+                }}>
+                    <ChannelMessage
+                        id={`message-link-embeds-${message.id}`}
+                        message={message}
+                        channel={channel}
+                        subscribeToComponentDispatch={false}
+                        compact={compact}
+                    />
+                </div>
+            )}
+        />
+    );
+}
+
+function AutomodEmbedAccessory(props: MessageEmbedProps): JSX.Element | null {
+    const { message, channel } = props;
+    const compact = MessageDisplayCompact.useSetting();
+    const images = getImages(message);
+    const { parse } = Parser;
+
+    const [channelLabel, iconUrl] = getChannelLabelAndIconUrl(channel);
+
+    return <AutoModEmbed
+        channel={channel}
+        childrenAccessories={
+            <Span size="xs" weight="medium" color="text-muted" className={`${EmbedClasses.embedAuthor} ${EmbedClasses.embedMargin}`}>
+                {iconUrl && <img src={iconUrl} className={EmbedClasses.embedAuthorIcon} alt="" />}
+                <span>
+                    <span>{channelLabel} - </span>
+                    {channel.isDM()
+                        ? Parser.parse(`<@${ChannelStore.getChannel(channel.id).recipients[0]}>`)
+                        : Parser.parse(`<#${channel.id}>`)
+                    }
+                </span>
+            </Span>
+        }
+        compact={compact}
+        content={
+            <>
+                {message.content || message.attachments.length <= images.length
+                    ? parse(message.content)
+                    : [noContent(message.attachments.length, message.embeds.length)]
+                }
+                {images.map((a, idx) => {
+                    const { width, height } = computeWidthAndHeight(a.width, a.height);
+                    return (
+                        <div key={idx}>
+                            <img src={a.proxyURL ?? a.url} width={width} height={height} />
+                        </div>
+                    );
+                })}
+            </>
+        }
+        hideTimestamp={false}
+        message={message}
+        _messageEmbed="automod"
+    />;
+}
+
+export default definePlugin({
+    name: "MessageLinkEmbeds",
+    description: () => t(plugin.messageLinkEmbeds.description),
+    authors: [Devs.TheSun, Devs.Ven, Devs.RyanCaoDev],
+    tags: ["chat", "utility"],
+    dependencies: ["MessageAccessoriesAPI", "MessageUpdaterAPI", "UserSettingsAPI"],
+    settings,
+
+    patches: [
+        {
+            find: "!1,withFooter:",
+            replacement: {
+                match: /(?=function (\i)\(\i\){let{message:\i,channel:\i,[^}]+?withFooter:)/,
+                replace: "$self.AutoModEmbed=$1;"
+            }
+        }
+    ],
+
+    set AutoModEmbed(value: any) {
+        AutoModEmbed = value;
+    },
+
+    start() {
+        addMessageAccessory("MessageLinkEmbeds", props => {
+            if (!messageLinkRegex.test(props.message.content))
+                return null;
+
+            // need to reset the regex because it's global
+            messageLinkRegex.lastIndex = 0;
+
+            return (
+                <MessageEmbedAccessory
+                    message={props.message}
+                />
+            );
+        }, 4 /* just above rich embeds */);
+    },
+    stop() {
+        removeMessageAccessory("MessageLinkEmbeds");
+    }
+});

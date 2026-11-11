@@ -1,0 +1,48 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import "./Link.css";
+
+import { classes } from "@utils/misc";
+import type { AnchorHTMLAttributes, DetailedHTMLProps, PropsWithChildren } from "react";
+
+export interface LinkProps extends DetailedHTMLProps<AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement> {
+    disabled?: boolean;
+    useDefaultUnderlineStyles?: boolean;
+}
+
+export function Link({
+    disabled,
+    useDefaultUnderlineStyles = true,
+    href,
+    rel,
+    target,
+    className,
+    children,
+    ...restProps
+}: PropsWithChildren<LinkProps>) {
+    const isInternal = href && /^(?:discord:\/)?\/[a-zA-Z0-9_-]/.test(href);
+    const needsSafeAttrs = href && !isInternal;
+    return (
+        <a
+            role="link"
+            href={href}
+            target={target ?? (needsSafeAttrs ? "_blank" : undefined)}
+            rel={rel ?? (needsSafeAttrs ? "noreferrer noopener" : undefined)}
+            className={classes(
+                "pc-link",
+                useDefaultUnderlineStyles && "pc-link-underline-on-hover",
+                disabled && "pc-link-disabled",
+                className
+            )}
+            aria-disabled={disabled}
+            {...restProps}
+        >
+            {children}
+        </a>
+    );
+}

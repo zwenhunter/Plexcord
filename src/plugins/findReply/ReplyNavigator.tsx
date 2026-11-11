@@ -1,0 +1,70 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import "./styles.css";
+
+import ErrorBoundary from "@components/ErrorBoundary";
+import { Message } from "@plexcord/discord-types";
+import { Paginator, requirePaginator } from "@plugins/reviewDB/components/ReviewModal";
+import { findComponentByCodeLazy } from "@webpack";
+import { React, useRef, useState } from "@webpack/common";
+
+const CloseButton = findComponentByCodeLazy("CLOSE_BUTTON_LABEL");
+import type { RefObject } from "react";
+
+import { jumper } from "./index";
+
+export default function ReplyNavigator({ replies }: { replies: Message[]; }) {
+    const [page, setPage] = useState(1);
+    const [visible, setVisible] = useState(true);
+    const ref: RefObject<HTMLDivElement | null> = useRef(null);
+    React.useEffect(() => {
+        setPage(1);
+        setVisible(true);
+    }, [replies]);
+    React.useEffect(() => {
+        // https://stackoverflow.com/a/42234988
+        function onMouseDown(event: MouseEvent) {
+            if (ref.current && event.target instanceof Element && !ref.current.contains(event.target)) {
+                setVisible(false);
+            }
+        }
+
+        document.addEventListener("mousedown", onMouseDown);
+        return () => {
+            document.removeEventListener("mousedown", onMouseDown);
+        };
+    }, [ref]);
+    requirePaginator();
+    return (
+        <ErrorBoundary>
+            <div ref={ref} className="pc-findreply-div" style={{
+                display: visible ? "flex" : "none",
+            }}>
+                <Paginator
+                    className={"pc-findreply-paginator"}
+                    currentPage={page}
+                    maxVisiblePages={5}
+                    pageSize={1}
+                    totalCount={replies.length}
+                    onPageChange={processPageChange}
+                />
+                <CloseButton className={"pc-findreply-close"} onClick={() => setVisible(false)} />
+            </div>
+        </ErrorBoundary>
+    );
+
+    function processPageChange(page: number) {
+        setPage(page);
+        jumper.jumpToMessage({
+            channelId: replies[page - 1].channel_id,
+            messageId: replies[page - 1].id,
+            flash: true,
+            jumpType: "INSTANT"
+        });
+    }
+}

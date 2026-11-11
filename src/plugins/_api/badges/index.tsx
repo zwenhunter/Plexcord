@@ -1,0 +1,343 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import "./fixDiscordBadgePadding.css";
+
+import { _getBadges, BadgePosition, BadgeRarity, BadgeUserArgs, DirectoryBadge, ProfileBadge } from "@api/Badges";
+import { plugins, t } from "@api/i18n";
+import ErrorBoundary from "@components/ErrorBoundary";
+import { CopyIcon, LinkIcon } from "@components/Icons";
+import { openContributorModal } from "@components/settings/tabs";
+import { Devs, PcDevs } from "@utils/constants";
+import { copyWithToast } from "@utils/discord";
+import { Logger } from "@utils/Logger";
+import { shouldShowContributorBadge, shouldShowPcContributorBadge } from "@utils/misc";
+import definePlugin from "@utils/types";
+import { ContextMenuApi, Menu, showToast, UserStore } from "@webpack/common";
+
+import Plugins, { PluginMeta } from "~plugins";
+
+import { openDonorModal } from "./modals";
+
+const PLEXCORD_BADGE = "https://cdn.discordapp.com/emojis/1357527217332031508.webp?size=64";
+const ContributorBadge: ProfileBadge = {
+    id: "vencord_contributor",
+    get description() {
+        return t(plugins.metadata.badges.contributor.vencord);
+    },
+    infoLabel: "Vencord",
+    rarity: BadgeRarity.MYTHIC,
+    iconSrc: "https://cdn.discordapp.com/emojis/1562267648857997356.webp?size=128",
+    largeIconSrc: "https://cdn.discordapp.com/emojis/1562267648857997356.webp?size=512",
+    position: BadgePosition.START,
+    shouldShow: ({ userId }) => shouldShowContributorBadge(userId),
+    onClick: (_, { userId }) => openContributorModal(UserStore.getUser(userId))
+};
+
+const PlexcordBadge: ProfileBadge = {
+    id: "plexcord_contributor",
+    get description() {
+        return t(plugins.metadata.badges.contributor.plexcord);
+    },
+    infoLabel: "Plexcord",
+    rarity: BadgeRarity.MYTHIC,
+    iconSrc: PLEXCORD_BADGE,
+    largeIconSrc: PLEXCORD_BADGE,
+    position: BadgePosition.START,
+    shouldShow: ({ userId }) => shouldShowPcContributorBadge(userId),
+    onClick: (_, { userId }) => openContributorModal(UserStore.getUser(userId))
+};
+
+const UserPluginContributorBadge: ProfileBadge = {
+    id: "user_plugin_contributor",
+    get description() {
+        return t(plugins.metadata.badges.contributor.userPlugin);
+    },
+    infoLabel: "Plexcord",
+    rarity: BadgeRarity.MYTHIC,
+    iconSrc: PLEXCORD_BADGE,
+    position: BadgePosition.START,
+    shouldShow: ({ userId }) => {
+        if (!IS_DEV) return false;
+        const allPlugins = Object.values(Plugins);
+        return allPlugins.some(p => {
+            function getName(name: string | (() => string)): string {
+                return typeof name === "function" ? name() : name;
+            }
+            const pluginMeta = PluginMeta[getName(p.name)];
+            return pluginMeta?.userPlugin && p.authors.some(a => a.id.toString() === userId);
+        });
+    },
+    onClick: (_, { userId }) => openContributorModal(UserStore.getUser(userId)),
+    props: {
+        style: {
+            borderRadius: "50%",
+            transform: "scale(0.9)"
+        }
+    },
+};
+
+interface DonorBadge {
+    tooltip?: string;
+    badge: string;
+    "2"?: 1;
+}
+
+let DonorBadges = {} as Record<string, Array<DonorBadge>>;
+let DirectoryBadges = {} as Record<string, DirectoryBadge>;
+
+async function loadBadges(url: string, noCache = false) {
+    const init = {} as RequestInit;
+    if (noCache) init.cache = "no-cache";
+
+    return await fetch(url, init).then(r => r.json());
+}
+
+async function loadAllBadges(noCache = false) {
+    const donor = await loadBadges("https://badges.vencord.dev/badges.json", noCache);
+    const plexcord = await loadBadges("https://badges.plexcord.club/badges.json", noCache);
+
+    DonorBadges = {
+        ...donor,
+        ...plexcord,
+    };
+}
+
+let intervalId: any;
+
+function toDirectoryBadge(b: ProfileBadge, userId: string): DirectoryBadge {
+    const id = `pc-${userId}-${b.id}`;
+    const desc = typeof b.description === "function" ? b.description({ userId, guildId: "" }) : b.description;
+
+    return DirectoryBadges[id] ??= {
+        badge_id: id,
+        name: b.name ?? desc ?? "",
+        description: b.detail ?? desc ?? b.name ?? "",
+        info_label: b.infoLabel ?? "Plexcord",
+        rarity: b.rarity ?? BadgeRarity.COMMON,
+        simple_icon_url: b.iconSrc!,
+        complex_icon_static_url: b.largeIconSrc ?? b.iconSrc!,
+        obtained_at: b.obtainedAt,
+        is_earnable: false,
+        owned: true,
+        hidden: false,
+        tiers: []
+    };
+}
+
+export function BadgeContextMenu({ badge }: { badge: Omit<ProfileBadge, "id"> & BadgeUserArgs; }) {
+    return (
+        <Menu.Menu
+            navId="pc-badge-context"
+            onClose={ContextMenuApi.closeContextMenu}
+            aria-label={t(plugins.metadata.badges.context.title)}
+        >
+            {badge.description && (
+                <Menu.MenuItem
+                    id="pc-badge-copy-name"
+                    label={t(plugins.metadata.badges.context.copy.name)}
+                    action={() => {
+                        const description = typeof badge.description === "function"
+                            ? badge.description(badge)
+                            : badge.description;
+                        if (description) copyWithToast(description);
+                    }}
+                    leadingAccessory={{ type: "icon", icon: CopyIcon }}
+                />
+            )}
+            {badge.iconSrc && (
+                <Menu.MenuItem
+                    id="pc-badge-copy-link"
+                    label={t(plugins.metadata.badges.context.copy.link)}
+                    action={() => copyWithToast(badge.iconSrc!)}
+                    leadingAccessory={{ type: "icon", icon: LinkIcon }}
+                />
+            )}
+        </Menu.Menu>
+    );
+}
+
+export default definePlugin({
+    name: "BadgeAPI",
+    description: () => t(plugins.metadata.badges.description),
+    authors: [Devs.Megu, Devs.Ven, Devs.TheSun, Devs.kaxtusik, PcDevs.MutanPlex],
+    tags: ["appearance", "utility"],
+    required: true,
+
+    patches: [
+        {
+            find: "#{intl::PROFILE_USER_BADGES}",
+            replacement: [
+                {
+                    match: /alt:" ","aria-hidden":!0,src:.{0,50}(\i).iconSrc/,
+                    replace: "...$1.props,$&"
+                },
+                // Path with 2026-04-badge-discovery OFF
+                {
+                    match: /(?<=forceOpen:.{0,40}?ariaHidden:!0,)children:(?=.{0,50}?(\i)\.id)/,
+                    replace: "children:$1.component?$self.renderBadgeComponent({...$1}):"
+                },
+                // Path with 2026-04-badge-discovery ON
+                {
+                    match: /(?<=fallbackIconSrc:.{0,50}?)children:(?=.{0,50}?(\i)\.id)/,
+                    replace: "children:$1.component?$self.renderBadgeComponent({...$1}):"
+                },
+                // handle onClick and onContextMenu
+                {
+                    match: /href:(\i)\.link/,
+                    replace: "...$self.getBadgeMouseEventHandlers($1),$&"
+                },
+                {
+                    match: /legacyBadgeId:(\i),userId:(\i),.{0,100}?=\i,\i=\(0,\i\.\i\)\(\1\)/,
+                    replace: "$&??$self.getDirectoryBadgeId($1,$2)"
+                }
+            ]
+        },
+        {
+            find: "getLegacyUsername(){",
+            replacement: {
+                match: /getBadges\(\)\{.{0,100}?return\[/,
+                replace: "$&...$self.getBadges(this),"
+            }
+        },
+        {
+            find: '"BadgeDirectoryStore"',
+            replacement: {
+                match: /getBadgeById\((\i),(\i)\)\{/,
+                replace: "$&const plexcordBadge=$self.getDirectoryBadge($1);if(plexcordBadge)return plexcordBadge;"
+            }
+        },
+        {
+            find: "badge_directory_closed",
+            replacement: {
+                match: /(\i\.\i\.getBadges\((\i)\))(?=:\[\],\[\2\]\))/,
+                replace: "[...$1,...$self.getDirectoryBadges($2)]"
+            }
+        }
+    ],
+
+    // for access from the console or other plugins
+    get DonorBadges() {
+        return DonorBadges;
+    },
+
+    toolboxActions: () => ({
+        [t(plugins.metadata.badges.context.refetch.button)]: async function () {
+            await loadAllBadges(true);
+            showToast({ text: t(plugins.metadata.badges.context.refetch.success), variant: "success" });
+        }
+    }),
+
+    userProfileBadges: [ContributorBadge, PlexcordBadge, UserPluginContributorBadge],
+
+    async start() {
+        await loadAllBadges();
+        clearInterval(intervalId);
+        intervalId = setInterval(loadAllBadges, 1000 * 60 * 30); // 30 minutes
+    },
+
+    async stop() {
+        clearInterval(intervalId);
+        DirectoryBadges = {};
+    },
+
+    getBadges(profile: { userId: string; guildId: string; }) {
+        if (!profile) return [];
+
+        try {
+            return _getBadges(profile);
+        } catch (e) {
+            new Logger("BadgeAPI#getBadges").error(e);
+            return [];
+        }
+    },
+
+    getDirectoryBadge(id: string) {
+        return DirectoryBadges[id];
+    },
+
+    getDirectoryBadges(userId: string) {
+        return this.getBadges({ userId, guildId: "" })
+            .filter(b => b.iconSrc)
+            .map(b => toDirectoryBadge(b, userId));
+    },
+
+    getDirectoryBadgeId(badgeId: string, userId?: string) {
+        if (!userId) return;
+
+        const badge = this.getBadges({ userId, guildId: "" })
+            .find(b => b.id === badgeId && b.iconSrc);
+
+        if (badge) return toDirectoryBadge(badge, userId).badge_id;
+    },
+
+    renderBadgeComponent: ErrorBoundary.wrap((badge: ProfileBadge & BadgeUserArgs) => {
+        const Component = badge.component!;
+        return <Component {...badge} />;
+    }, { noop: true }),
+
+    getBadgeMouseEventHandlers(badge: ProfileBadge & BadgeUserArgs) {
+        const handlers = {} as Record<string, (e: React.MouseEvent) => void>;
+
+        if (!badge) return handlers; // sanity check
+
+        const { onClick, onContextMenu } = badge;
+
+        if (onClick) handlers.onClick = e => onClick(e, badge);
+        if (onContextMenu) handlers.onContextMenu = e => onContextMenu(e, badge);
+
+        return handlers;
+    },
+
+    getDonorBadges(userId: string) {
+        return DonorBadges[userId]?.map((badge, idx) => {
+            let largeIconSrc: string | undefined = undefined;
+            if (badge["2"]) {
+                const url = new URL(badge.badge);
+                url.pathname = url.pathname.replace(/(\.[^/.]+)$/, "@2x$1");
+                largeIconSrc = url.toString();
+            }
+
+            return {
+                id: `plexcord_donor_badge_${idx}`,
+                iconSrc: badge.badge,
+                largeIconSrc,
+                description: badge.tooltip,
+                name: badge.tooltip,
+                infoLabel: "Plexcord Donor",
+                rarity: BadgeRarity.MYTHIC,
+                position: BadgePosition.START,
+                props: {
+                    style: {
+                        borderRadius: "50%",
+                        transform: "scale(0.9)" // The image is a bit too big compared to default badges
+                    }
+                },
+                onContextMenu(event, badgeProps) {
+                    ContextMenuApi.openContextMenu(event, () => <BadgeContextMenu badge={badgeProps} />);
+                },
+                onClick() {
+                    return openDonorModal();
+                },
+            } satisfies ProfileBadge;
+        });
+    }
+});
+
+export { openDonorModal };

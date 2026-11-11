@@ -1,0 +1,61 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { plugin, t } from "@api/i18n";
+import { Devs, IS_MAC } from "@utils/constants";
+import definePlugin from "@utils/types";
+import { findCssClassesLazy } from "@webpack";
+
+const SpoilerClasses = findCssClassesLazy("spoilerContent", "hidden");
+const MessagesClasses = findCssClassesLazy("messagesWrapper", "navigationDescription");
+
+export default definePlugin({
+    name: "RevealAllSpoilers",
+    description: () => t(plugin.revealAllSpoilers.description),
+    authors: [Devs.whqwert],
+    tags: ["chat", "utility"],
+
+    patches: [
+        {
+            find: ".removeObscurity,",
+            replacement: {
+                match: /(?<=removeObscurity(?:",|=)(\i)=>{)/,
+                replace: (_, event) => `$self.reveal(${event});`
+            }
+        }
+    ],
+
+    reveal(event: MouseEvent) {
+        const { ctrlKey, metaKey, shiftKey, target } = event;
+
+        if (!(IS_MAC ? metaKey : ctrlKey)) { return; }
+
+        const { spoilerContent, hidden } = SpoilerClasses;
+        const { messagesWrapper } = MessagesClasses;
+
+        const parent = shiftKey
+            ? document.querySelector(`div.${messagesWrapper}`)
+            : (target as HTMLSpanElement).parentElement;
+
+        for (const spoiler of parent!.querySelectorAll(`span.${spoilerContent}.${hidden}`)) {
+            (spoiler as HTMLSpanElement).click();
+        }
+    }
+
+});

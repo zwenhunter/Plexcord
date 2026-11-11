@@ -1,0 +1,77 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import "./style.css";
+
+import { plugin, t } from "@api/i18n";
+import ErrorBoundary from "@components/ErrorBoundary";
+import { CopyIcon, NoEntrySignIcon } from "@components/Icons";
+import { Devs, PcDevs } from "@utils/constants";
+import { copyWithToast } from "@utils/discord";
+import definePlugin from "@utils/types";
+import { Tooltip, useState } from "@webpack/common";
+
+const CheckMarkIcon = () => {
+    return <svg width="18" height="18" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M21.7 5.3a1 1 0 0 1 0 1.4l-12 12a1 1 0 0 1-1.4 0l-6-6a1 1 0 1 1 1.4-1.4L9 16.58l11.3-11.3a1 1 0 0 1 1.4 0Z"></path>
+    </svg>;
+};
+
+export default definePlugin({
+    name: "CopyFileContents",
+    description: () => t(plugin.copyFileContents.description),
+    authors: [Devs.Obsidian, Devs.Nuckyz, PcDevs.MutanPlex],
+    tags: ["utility"],
+
+    patches: [
+        {
+            find: "#{intl::PREVIEW_BYTES_LEFT}",
+            replacement: [
+                // Inline preview
+                {
+                    match: /fileContents:(\i),bytesLeft:(\i)\}\):null,/,
+                    replace: "$&$self.addCopyButton({fileContents:$1,bytesLeft:$2}),"
+                },
+                // Modal
+                {
+                    match: /align:"\i"\}\),(?=\(0,\i\.jsx\)\(\i,\{wordWrap:\i,setWordWrap:\i)/,
+                    replace: "$&$self.addCopyButton(arguments[0]),"
+                }
+            ]
+        }
+    ],
+
+    addCopyButton: ErrorBoundary.wrap(({ fileContents, bytesLeft }: { fileContents: string, bytesLeft: number; }) => {
+        const [recentlyCopied, setRecentlyCopied] = useState(false);
+
+        return (
+            <Tooltip text={recentlyCopied ? t(plugin.copyFileContents.copied) : bytesLeft > 0 ? t(plugin.copyFileContents.large) : t(plugin.copyFileContents.copyFileContents)}>
+                {tooltipProps => (
+                    <div
+                        {...tooltipProps}
+                        className="pc-cfc-button"
+                        role="button"
+                        onClick={() => {
+                            if (!recentlyCopied && bytesLeft <= 0) {
+                                copyWithToast(fileContents);
+                                setRecentlyCopied(true);
+                                setTimeout(() => setRecentlyCopied(false), 2000);
+                            }
+                        }}
+                    >
+                        {recentlyCopied
+                            ? <CheckMarkIcon />
+                            : bytesLeft > 0
+                                ? <NoEntrySignIcon width={18} height={18} color="var(--channel-icon)" />
+                                : <CopyIcon width={18} height={18} />
+                        }
+                    </div>
+                )}
+            </Tooltip>
+        );
+    }, { noop: true }),
+});

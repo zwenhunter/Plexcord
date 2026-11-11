@@ -1,0 +1,215 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { findGroupChildrenByChildId, NavContextMenuPatchCallback } from "@api/ContextMenu";
+import { plugin, t } from "@api/i18n";
+import { definePluginSettings } from "@api/Settings";
+import { CogWheel } from "@components/Icons";
+import { Guild } from "@plexcord/discord-types";
+import { Devs } from "@utils/constants";
+import { sleep } from "@utils/misc";
+import definePlugin, { OptionType } from "@utils/types";
+import { findByCodeLazy, findByPropsLazy, mapMangledModuleLazy } from "@webpack";
+import { ChannelStore, CollapsedVoiceChannelStore, Menu, SortedGuildStore, UserStore } from "@webpack/common";
+
+const { updateGuildNotificationSettings } = findByPropsLazy("updateGuildNotificationSettings");
+const { toggleShowAllChannels } = mapMangledModuleLazy(".onboardExistingMember(", {
+    toggleShowAllChannels: m => {
+        const s = String(m);
+        return s.length < 100 && !s.includes("onboardExistingMember") && !s.includes("getOptedInChannels");
+    }
+});
+const isOptInEnabledForGuild = findByCodeLazy(".COMMUNITY)||", ".isOptInEnabled(");
+const collapsedChannels = findByPropsLazy("toggleCollapseGuild");
+
+const settings = definePluginSettings({
+    guild: {
+        label: () => t(plugin.newGuildSettings.option.guild.label),
+        description: () => t(plugin.newGuildSettings.option.guild.description),
+        type: OptionType.BOOLEAN,
+        default: true
+    },
+    messages: {
+        label: () => t(plugin.newGuildSettings.option.messages.label),
+        description: () => t(plugin.newGuildSettings.option.messages.description),
+        type: OptionType.SELECT,
+        options: [
+            { label: () => t(plugin.newGuildSettings.option.messages.all), value: 0 },
+            { label: () => t(plugin.newGuildSettings.option.messages.mentions), value: 1 },
+            { label: () => t(plugin.newGuildSettings.option.messages.nothing), value: 2 },
+            { label: () => t(plugin.newGuildSettings.option.messages.default), value: 3, default: true }
+        ]
+    },
+    everyone: {
+        label: () => t(plugin.newGuildSettings.option.everyone.label),
+        description: () => t(plugin.newGuildSettings.option.everyone.description),
+        type: OptionType.BOOLEAN,
+        default: true
+    },
+    role: {
+        label: () => t(plugin.newGuildSettings.option.role.label),
+        description: () => t(plugin.newGuildSettings.option.role.description),
+        type: OptionType.BOOLEAN,
+        default: true
+    },
+    highlights: {
+        label: () => t(plugin.newGuildSettings.option.highlights.label),
+        description: () => t(plugin.newGuildSettings.option.highlights.description),
+        type: OptionType.BOOLEAN,
+        default: true
+    },
+    events: {
+        label: () => t(plugin.newGuildSettings.option.events.label),
+        description: () => t(plugin.newGuildSettings.option.events.description),
+        type: OptionType.BOOLEAN,
+        default: true
+    },
+    showAllChannels: {
+        label: () => t(plugin.newGuildSettings.option.showAllChannels.label),
+        description: () => t(plugin.newGuildSettings.option.showAllChannels.description),
+        type: OptionType.BOOLEAN,
+        default: true
+    },
+    mobilePush: {
+        label: () => t(plugin.newGuildSettings.option.mobilePush.label),
+        description: () => t(plugin.newGuildSettings.option.mobilePush.description),
+        type: OptionType.BOOLEAN,
+        default: true
+    },
+    voiceChannels: {
+        label: () => t(plugin.newGuildSettings.option.voiceChannels.label),
+        description: () => t(plugin.newGuildSettings.option.voiceChannels.description),
+        type: OptionType.BOOLEAN,
+        default: false
+    }
+});
+
+const makeContextMenuPatch: (shouldAddIcon: boolean) => NavContextMenuPatchCallback = (shouldAddIcon: boolean) => (children, props: { guild?: Guild; folderId?: number; onClose(): void; }) => {
+    const { guild, folderId } = props;
+
+    if (guild) {
+        const group = findGroupChildrenByChildId("privacy", children);
+        if (!group) return;
+
+        group.push(
+            <Menu.MenuItem
+                label={t(plugin.newGuildSettings.context.apply)}
+                id="pc-newguildsettings-apply"
+                icon={shouldAddIcon ? CogWheel : void 0}
+                leadingAccessory={shouldAddIcon ? { type: "icon", icon: CogWheel } : void 0}
+                action={() => applyDefaultSettings(guild.id)}
+            />
+        );
+    }
+
+    if (folderId) {
+        const folder = SortedGuildStore.getGuildFolderById(folderId);
+
+        children.push(
+            <Menu.MenuItem
+                label={t(plugin.newGuildSettings.context.apply)}
+                id="pc-newguildsettings-apply-folder"
+                icon={shouldAddIcon ? CogWheel : void 0}
+                leadingAccessory={shouldAddIcon ? { type: "icon", icon: CogWheel } : void 0}
+                action={async () => {
+                    for (const guildId of folder.guildIds) {
+                        applyDefaultSettings(guildId);
+                        // you will be rate limited really fast so hopefully this avoids that
+                        await sleep(250);
+                    }
+                }}
+            />
+        );
+    }
+};
+
+function applyVoiceNameHidingToGuild(guildId: string) {
+    if (!settings.store.voiceChannels) return;
+
+    try {
+        ChannelStore.getChannelIds(guildId).filter(channelId => {
+            const channel = ChannelStore.getChannel(channelId);
+            return channel.isGuildVocal() && !CollapsedVoiceChannelStore.isCollapsed(channelId);
+        }).forEach(id => collapsedChannels.update(id));
+    } catch (error) {
+        console.warn("[NewGuildSettings] Error applying voice name hiding:", error);
+    }
+}
+
+function applyDefaultSettings(guildId: string | null) {
+    if (guildId === "@me" || guildId === "null" || guildId == null) return;
+    updateGuildNotificationSettings(guildId,
+        {
+            muted: settings.store.guild,
+            mobile_push: !settings.store.mobilePush,
+            suppress_everyone: settings.store.everyone,
+            suppress_roles: settings.store.role,
+            mute_scheduled_events: settings.store.events,
+            notify_highlights: settings.store.highlights ? 1 : 0
+        });
+    if (settings.store.messages !== 3) {
+        updateGuildNotificationSettings(guildId,
+            {
+                message_notifications: settings.store.messages,
+            });
+    }
+    if (settings.store.showAllChannels && isOptInEnabledForGuild(guildId)) {
+        toggleShowAllChannels(guildId);
+    }
+
+    if (settings.store.voiceChannels) {
+        applyVoiceNameHidingToGuild(guildId);
+    }
+}
+
+export default definePlugin({
+    name: "NewGuildSettings",
+    description: () => t(plugin.newGuildSettings.description),
+    authors: [Devs.Glitch, Devs.Nuckyz, Devs.carince, Devs.Mopi, Devs.GabiRP],
+    tags: ["servers", "utility", "customisation"],
+
+    contextMenus: {
+        "guild-context": makeContextMenuPatch(false),
+        "guild-header-popout": makeContextMenuPatch(true)
+    },
+    patches: [
+        {
+            find: ",acceptInvite(",
+            replacement: {
+                match: /INVITE_ACCEPT_SUCCESS.+?,(\i)=null!=.+?;/,
+                replace: (m, guildId) => `${m}$self.applyDefaultSettings(${guildId});`
+            }
+        },
+        {
+            find: "{joinGuild:",
+            replacement: {
+                match: /guildId:(\i),lurker:(\i).{0,20}}\);/,
+                replace: (m, guildId, lurker) => `${m}if(!${lurker})$self.applyDefaultSettings(${guildId});`
+            }
+        }
+    ],
+    settings,
+    applyDefaultSettings,
+    flux: {
+        GUILD_JOIN_REQUEST_UPDATE({ guildId, request, status }) {
+            if (status === "APPROVED" && request.user_id === UserStore.getCurrentUser().id)
+                applyDefaultSettings(guildId);
+        }
+    }
+});

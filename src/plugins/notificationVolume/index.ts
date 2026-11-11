@@ -1,0 +1,40 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { definePluginSettings } from "@api/Settings";
+import { Devs } from "@utils/constants";
+import definePlugin, { OptionType } from "@utils/types";
+
+const settings = definePluginSettings({
+    notificationVolume: {
+        label: () => t(plugin.notificationVolume.option.notificationVolume.label),
+        description: () => t(plugin.notificationVolume.option.notificationVolume.description),
+        type: OptionType.SLIDER,
+        markers: [0, 25, 50, 75, 100],
+        default: 100,
+        stickToMarkers: false
+    }
+});
+
+export default definePlugin({
+    name: "NotificationVolume",
+    description: () => t(plugin.notificationVolume.description),
+    authors: [Devs.philipbry],
+    tags: ["notifications", "utility"],
+    settings,
+
+    patches: [
+        {
+            find: "ensureAudio(){",
+            replacement: {
+                match: /(?=Math\.min\(\i\.\i\.getOutputVolume\(\)\/100)/g,
+                replace: "$self.settings.store.notificationVolume/100*"
+            },
+        },
+    ],
+});

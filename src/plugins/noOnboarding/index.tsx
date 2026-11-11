@@ -1,0 +1,79 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { Devs, PcDevs } from "@utils/constants";
+import definePlugin from "@utils/types";
+import { RestAPI } from "@webpack/common";
+
+export default definePlugin({
+    name: "NoOnboarding",
+    description: () => t(plugin.noOnboarding.description),
+    authors: [PcDevs.omaw, Devs.Glitch],
+    tags: ["servers", "utility"],
+
+    patches: [
+        {
+            find: ",acceptInvite(",
+            replacement: {
+                match: /INVITE_ACCEPT_SUCCESS.+?,(\i)=null!=.+?;/,
+                replace: (m, guildId) => `${m}$self.bypassOnboard(${guildId});`
+            }
+        },
+        {
+            find: "{joinGuild:",
+            replacement: {
+                match: /guildId:(\i),lurker:(\i).{0,20}}\);/,
+                replace: (m, guildId, lurker) => `${m}if(!${lurker})$self.bypassOnboard(${guildId});`
+            }
+        },
+        {
+            find: 'type:"GUILD_ONBOARDING_PROMPTS_FETCH_START"',
+            replacement: [
+                {
+                    match: /(?<="GUILD_ONBOARDING_PROMPTS_FETCH_SUCCESS",guildId:\i,\.\.\.\i)(?=\})/,
+                    replace: ",enabled:!1"
+                },
+                {
+                    // with enabled:!1 the onboarding page renders empty, so never navigate to it
+                    match: /(?<=function \i\(\i\)\{)(?=\i\.\i\.dispatch\(\{type:"GUILD_ONBOARDING_START")/,
+                    replace: "return;"
+                }
+            ]
+        }
+    ],
+    bypassOnboard(guild_id: string) {
+        RestAPI.get({ url: `/guilds/${guild_id}/onboarding` }).then(res => {
+            const data = res.body;
+            if (!data?.prompts?.length) return;
+
+            const now = Math.floor(Date.now() / 1000);
+            const prompts_seen: Record<string, number> = {};
+            const responses_seen: Record<string, number> = {};
+            const responses: string[] = [];
+
+            for (const prompt of data.prompts) {
+                const options = prompt.options || [];
+                if (!options.length) continue;
+                prompts_seen[prompt.id] = now;
+                for (const opt of options) responses_seen[opt.id] = now;
+                responses.push(options[options.length - 1].id);
+            }
+
+            const payload = {
+                onboarding_responses: responses,
+                onboarding_prompts_seen: prompts_seen,
+                onboarding_responses_seen: responses_seen,
+            };
+
+            RestAPI.post({
+                url: `/guilds/${guild_id}/onboarding-responses`,
+                body: payload
+            }).catch(() => { });
+        }).catch(() => { });
+    }
+});

@@ -1,0 +1,117 @@
+.pc-msg-logger-enhanced-modal-root {
+    max-height: 100%;
+    max-width: 100%;
+}
+
+.pc-msg-logger-enhanced-modal-empty-logs {
+    display: grid;
+    place-content: center;
+    height: 100%;
+}
+
+.pc-msg-logger-enhanced-modal-info-icon {
+    position: absolute;
+    top: -24px;
+    right: -24px;
+    color: var(--interactive-icon-default);
+    cursor: pointer;
+}
+
+.pc-msg-logger-enhanced-modal-content-container {
+    /* max-height: 80vh; */
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+    transition: opacity 100ms ease-in;
+}
+
+.pc-msg-logger-enhanced-modal-content {
+    padding-bottom: 20px;
+    height: 100%;
+}
+
+.pc-msg-logger-enhanced-modal-content-inner {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    height: 100%;
+}
+
+.pc-msg-logger-enhanced-modal-tab-bar-item {
+    padding-bottom: 16px;
+    margin-bottom: -2px;
+}
+
+.pc-msg-logger-enhanced-modal-tab-bar {
+    margin-bottom: 12px;
+    margin-left: -24px;
+    width: 114.5%;
+    justify-content: space-around;
+}
+
+.pc-msg-logger-enhanced-modal-from {
+    font-size: 14px;
+    margin-left: 12px;
+}
+
+.msg-logger-modal-from-deleted {
+    color: var(--status-danger);
+}
+
+.pc-msg-logger-enhanced-modal-from-edited {
+    color: var(--white-600);
+}
+
+.pc-msg-logger-enhanced-toolbox-btn svg {
+    color: var(--interactive-icon-default);
+}
+
+:is(
+        .pc-msg-logger-enhanced-toolbox-btn:hover,
+        .pc-msg-logger-enhanced-toolbox-btn[class*="selected"]
+    )
+    svg {
+    color: var(--interactive-icon-active);
+}
+
+.pc-msg-logger-enhanced-folder-upload-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0;
+    background-color: var(--background-secondary-alt);
+}
+
+.pc-msg-logger-enhanced-folder-upload-input {
+    cursor: pointer;
+    padding: 10px 0 10px 10px;
+    color: var(--text-default);
+}
+
+.pc-msg-logger-enhanced-folder-upload-button {
+    margin: 6px;
+    padding: 4px 8px;
+}
+
+.pc-msg-logger-enhanced-message-icon {
+    padding: 0;
+    width: var(--space-32);
+    min-width: 0;
+    height: var(--space-32);
+    color: var(--interactive-icon-default) !important;
+}
+
+.pc-updater-modal-content {
+    padding: 1rem 2rem;
+}
+
+.pc-msg-logger-enhanced-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    padding-right: 20px;
+}
+
+.pc-msg-logger-enhanced-modal-filter {
+    width: 106%;
+}

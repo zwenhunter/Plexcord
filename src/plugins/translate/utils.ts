@@ -1,0 +1,203 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { getLanguageName, plugin, t } from "@api/i18n";
+import { classNameFactory } from "@utils/css";
+import { onlyOnce } from "@utils/onlyOnce";
+import { PluginNative } from "@utils/types";
+import { showToast } from "@webpack/common";
+
+import { DeeplLanguages, deeplLanguageToGoogleLanguage, GoogleLanguages, KagiLanguages } from "./languages";
+import { resetLanguageDefaults, settings } from "./settings";
+
+export const cl = classNameFactory("pc-trans-");
+
+const Native = PlexcordNative.pluginHelpers.Translate as PluginNative<typeof import("./native")>;
+
+interface GoogleData {
+    translation: string;
+    sourceLanguage: string;
+}
+
+interface DeeplData {
+    translations: {
+        detected_source_language: string;
+        text: string;
+    }[];
+}
+
+interface KagiData {
+    translation: string;
+    detected_language: {
+        label: string;
+    };
+}
+
+export interface TranslationValue {
+    sourceLanguage: string;
+    text: string;
+}
+
+export const getLanguages = () => {
+    if (IS_WEB) {
+        return GoogleLanguages;
+    }
+    switch (settings.store.service) {
+        case "google":
+            return GoogleLanguages;
+        case "kagi":
+            return KagiLanguages;
+        default:
+            return DeeplLanguages;
+    }
+};
+
+export async function translate(kind: "received" | "sent", text: string): Promise<TranslationValue> {
+    const translate = IS_WEB ? googleTranslate : (() => {
+        switch (settings.store.service) {
+            case "google":
+                return googleTranslate;
+            case "kagi":
+                return kagiTranslate;
+            default:
+                return deeplTranslate;
+        }
+    })();
+
+    try {
+        return await translate(
+            text,
+            settings.store[`${kind}Input`],
+            settings.store[`${kind}Output`]
+        );
+    } catch (e) {
+        const userMessage = typeof e === "string"
+            ? e
+            : t(plugin.translate.modal.wrong);
+
+        showToast({ text: userMessage, variant: "critical" });
+
+        throw e instanceof Error
+            ? e
+            : new Error(userMessage);
+    }
+}
+
+async function googleTranslate(text: string, sourceLang: string, targetLang: string): Promise<TranslationValue> {
+    const url = "https://translate-pa.googleapis.com/v1/translate?" + new URLSearchParams({
+        "params.client": "gtx",
+        "dataTypes": "TRANSLATION",
+        "key": "AIzaSyDLEeFI5OtFBwYBIoK_jj5m32rZK5CkCXA", // some google API key
+        "query.sourceLanguage": sourceLang,
+        "query.targetLanguage": targetLang,
+        "query.text": text,
+    });
+
+    const res = await fetch(url);
+    if (!res.ok)
+        throw new Error(
+            `${t(plugin.translate.modal.failed.to, { text })} (${sourceLang} -> ${targetLang})`
+            + `\n${res.status} ${res.statusText}`
+        );
+
+    const { sourceLanguage, translation }: GoogleData = await res.json();
+
+    return {
+        sourceLanguage: getLanguageName(sourceLanguage, GoogleLanguages[sourceLanguage]),
+        text: translation
+    };
+}
+
+function fallbackToGoogle(text: string, sourceLang: string, targetLang: string): Promise<TranslationValue> {
+    return googleTranslate(
+        text,
+        deeplLanguageToGoogleLanguage(sourceLang),
+        deeplLanguageToGoogleLanguage(targetLang)
+    );
+}
+
+const showDeeplApiQuotaToast = onlyOnce(
+    () => showToast({ text: t(plugin.translate.modal.deepl.api), variant: "critical" })
+);
+
+async function deeplTranslate(text: string, sourceLang: string, targetLang: string): Promise<TranslationValue> {
+    if (!settings.store.deeplApiKey) {
+        showToast({ text: t(plugin.translate.modal.deepl.apiKey), variant: "critical" });
+
+        settings.store.service = "google";
+        resetLanguageDefaults();
+
+        return fallbackToGoogle(text, sourceLang, targetLang);
+    }
+
+    // CORS jumpscare
+    const { status, data } = await Native.makeDeeplTranslateRequest(
+        settings.store.service === "deepl-pro",
+        settings.store.deeplApiKey,
+        JSON.stringify({
+            text: [text],
+            target_lang: targetLang,
+            source_lang: sourceLang.split("-")[0]
+        })
+    );
+
+    switch (status) {
+        case 200:
+            break;
+        case -1:
+            throw t(plugin.translate.modal.failed.connect) + data;
+        case 403:
+            throw t(plugin.translate.modal.deepl.auth);
+        case 456:
+            showDeeplApiQuotaToast();
+            return fallbackToGoogle(text, sourceLang, targetLang);
+        default:
+            throw new Error(`Failed to translate "${text}" (${sourceLang} -> ${targetLang})\n${status} ${data}`);
+    }
+
+    const { translations }: DeeplData = JSON.parse(data);
+    const src = translations[0].detected_source_language;
+
+    return {
+        sourceLanguage: getLanguageName(src, DeeplLanguages[src]),
+        text: translations[0].text
+    };
+}
+
+async function kagiTranslate(text: string, sourceLang: string, targetLang: string): Promise<TranslationValue> {
+    const { status, data } = await Native.makeKagiTranslateRequest(
+        settings.store.kagiSession, text, sourceLang, targetLang
+    );
+
+    switch (status) {
+        case 200:
+            break;
+        case 401:
+            throw "Invalid or expired Kagi session token";
+        default:
+            throw new Error(`Failed to translate "${text}" (${sourceLang} -> ${targetLang})\n${status} ${data}`);
+    }
+
+    const { detected_language, translation }: KagiData = data;
+
+    return {
+        sourceLanguage: detected_language.label,
+        text: translation
+    };
+}

@@ -1,0 +1,543 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { plugin, t } from "@api/i18n";
+import { isPluginEnabled } from "@api/PluginManager";
+import { definePluginSettings } from "@api/Settings";
+import { getUserSettingLazy } from "@api/UserSettings";
+import { BaseText } from "@components/BaseText";
+import { Button } from "@components/Button";
+import { Card } from "@components/Card";
+import ErrorBoundary from "@components/ErrorBoundary";
+import { Flex } from "@components/Flex";
+import { Link } from "@components/Link";
+import { Paragraph } from "@components/Paragraph";
+import { openSettingsTabModal, UpdaterTab } from "@components/settings";
+import { Channel, RenderModalProps } from "@plexcord/discord-types";
+import { CloudUploadPlatform } from "@plexcord/discord-types/enums";
+import { gitHashShort } from "@shared/plexcordUserAgent";
+import { BOT_COMMANDS_CHANNEL_ID, CONTRIB_ROLE_ID, Devs, DONOR_ROLE_ID, KNOWN_ISSUES_CHANNEL_ID, PcDevs, PLEXBOT_USER_ID, PLEXCORD_GUILD_ID, REGULAR_ROLE_ID, SUPPORT_CATEGORY_ID, SUPPORT_CHANNEL_ID } from "@utils/constants";
+import { getIntlMessage, openInviteModal, sendMessage } from "@utils/discord";
+import { Logger } from "@utils/Logger";
+import { Margins } from "@utils/margins";
+import { isAnyPluginDev, isPcPluginDev, isPlexcordGuild, isPluginDev, isSupport, isSupportChannel, tryOrElse } from "@utils/misc";
+import { relaunch } from "@utils/native";
+import { onlyOnce } from "@utils/onlyOnce";
+import { makeCodeblock } from "@utils/text";
+import definePlugin from "@utils/types";
+import { checkForUpdates, isOutdated, update } from "@utils/updater";
+import { Alerts, ChannelRouter, ChannelStore, CloudUploader, ConfirmModal, Constants, GuildMemberStore, openModal, Parser, PermissionsBits, PermissionStore, RelationshipStore, RestAPI, SelectedChannelStore, showToast, SnowflakeUtils, UserStore } from "@webpack/common";
+import { JSX } from "react";
+
+import gitHash from "~git-hash";
+import plugins, { PluginMeta } from "~plugins";
+
+import SettingsPlugin from "./settings";
+
+const AdditionalAllowedChannelIds = [
+    BOT_COMMANDS_CHANNEL_ID, // Plexcord > #bot-spam
+];
+
+const TrustedRolesIds = [
+    CONTRIB_ROLE_ID, // contributor
+    REGULAR_ROLE_ID, // regular
+    DONOR_ROLE_ID, // donor
+];
+
+const ShowCurrentGame = getUserSettingLazy<boolean>("status", "showCurrentGame")!;
+
+const isSupportAllowedChannel = (channel: Channel) => channel.parent_id === SUPPORT_CATEGORY_ID || AdditionalAllowedChannelIds.includes(channel.id);
+const ShowEmbeds = getUserSettingLazy<boolean>("textAndImages", "renderEmbeds")!;
+
+interface clientData {
+    name: string;
+    version?: string | null | undefined;
+    info?: string | boolean | null | undefined;
+    spoofed?: string | null | undefined;
+    shortHash?: string | null | undefined;
+    hash?: string | null | undefined;
+    dev?: boolean | null | undefined;
+}
+
+async function forceUpdate() {
+    const outdated = await checkForUpdates();
+    if (outdated) {
+        await update();
+        relaunch();
+    }
+
+    return outdated;
+}
+
+function getWindowsName(release: string) {
+    const build = parseInt(release.split(".")[2]);
+    if (build >= 22000) return "Windows 11";
+    if (build >= 10240) return "Windows 10";
+    if (build >= 9200) return "Windows 8.1";
+    if (build >= 7600) return "Windows 7";
+    return `Windows (${release})`;
+}
+
+function getMacOSName(release: string) {
+    const major = parseInt(release.split(".")[0]);
+    if (major === 24) return "MacOS 15 (Sequoia)";
+    if (major === 23) return "MacOS 14 (Sonoma)";
+    if (major === 22) return "MacOS 13 (Ventura)";
+    if (major === 21) return "MacOS 12 (Monterey)";
+    if (major === 20) return "MacOS 11 (Big Sur)";
+    if (major === 19) return "MacOS 10.15 (Catalina)";
+    return `MacOS (${release})`;
+}
+
+function platformName() {
+    if (typeof DiscordNative === "undefined") return navigator.platform;
+    if (DiscordNative.process.platform === "win32") return `${getWindowsName(DiscordNative.os.release)}`;
+    if (DiscordNative.process.platform === "darwin") return `${getMacOSName(DiscordNative.os.release)} (${DiscordNative.process.arch === "arm64" ? "Apple Silicon" : "Intel Silicon"})`;
+    if (DiscordNative.process.platform === "linux") return `${navigator.platform} (${DiscordNative.os.release})`;
+    return DiscordNative.process.platform;
+}
+
+export function detectClient(): clientData {
+    if (IS_DISCORD_DESKTOP) {
+        return {
+            name: "Discord Desktop",
+            version: DiscordNative.app.getVersion(),
+        };
+    }
+    if (IS_PLEXTRON) return {
+        name: "Plextron",
+        version: PlextronNative.app.getVersion(),
+    };
+
+    if ("legcord" in window) return {
+        name: "LegCord",
+        version: window.legcord.version,
+    };
+
+    const name = typeof unsafeWindow !== "undefined" ? "UserScript" : "Web";
+    return {
+        name: name,
+        info: navigator.userAgent
+    };
+}
+
+async function generateDebugInfoMessage() {
+    const { RELEASE_CHANNEL } = window.GLOBAL_ENV;
+
+    const clientInfo = detectClient();
+    let clientString = `${clientInfo.name}`;
+    clientString += `${clientInfo.version ? ` v${clientInfo.version}` : ""}`;
+    clientString += `${clientInfo.info ? ` • ${clientInfo.info}` : ""}`;
+    clientString += `${clientInfo.shortHash ? ` • [${clientInfo.shortHash}](<https://github.com/MutanPlex/Plexcord/commit/${clientInfo.hash}>)` : ""}`;
+
+    const spoofInfo = IS_PLEXTRON ? tryOrElse(() => PlextronNative.app.getPlatformSpoofInfo?.(), null) : null;
+    const platformDisplay = spoofInfo?.spoofed
+        ? `${platformName()} (spoofed from ${spoofInfo.originalPlatform})`
+        : platformName();
+
+    const info = {
+        Plexcord:
+            `v${VERSION} • [${gitHashShort}](<https://github.com/MutanPlex/Plexcord/commit/${gitHash}>)` +
+            `${SettingsPlugin.additionalInfo} - ${Intl.DateTimeFormat("en-GB", { dateStyle: "medium" }).format(BUILD_TIMESTAMP)}`,
+        Client: `${RELEASE_CHANNEL} ~ ${clientString}`,
+        Platform: platformDisplay
+    };
+
+    if (IS_DISCORD_DESKTOP) {
+        info["Last Crash Reason"] = (await tryOrElse(() => DiscordNative.processUtils.getLastCrash(), undefined))?.rendererCrashReason ?? "N/A";
+    }
+
+    const commonIssues = {
+        "Activity Sharing disabled": tryOrElse(() => !ShowCurrentGame.getSetting(), false),
+        "Link Embeds Disabled": tryOrElse(() => !ShowEmbeds.getSetting(), false),
+        "Plexcord DevBuild": !IS_STANDALONE,
+        "Platform Spoofed": spoofInfo?.spoofed ?? false,
+        "Has UserPlugins": Object.values(PluginMeta).some(m => m.userPlugin),
+        ">2 Weeks Outdated": BUILD_TIMESTAMP < Date.now() - 12096e5,
+    };
+
+    let content = `>>> ${Object.entries(info).map(([k, v]) => `**${k}**: ${v}`).join("\n")}`;
+    content += "\n" + Object.entries(commonIssues)
+        .filter(([, v]) => v).map(([k]) => `⚠️ ${k}`)
+        .join("\n");
+
+    return content.trim();
+}
+
+async function uploadPluginListFile(channelId: string, fileContent: string, filename: string) {
+    const file = new File([fileContent], filename, { type: "text/plain" });
+    const upload = new CloudUploader({ file, platform: CloudUploadPlatform.WEB }, channelId);
+
+    return new Promise<void>((resolve, reject) => {
+        upload.on("complete", () => {
+            RestAPI.post({
+                url: Constants.Endpoints.MESSAGES(channelId),
+                body: {
+                    flags: 0,
+                    channel_id: channelId,
+                    content: `⚠️ Plugin list attached as file due to high plugin count (${fileContent.split("\n").filter(l => l.startsWith("  -")).length} plugins enabled)`,
+                    nonce: SnowflakeUtils.fromTimestamp(Date.now()),
+                    sticker_ids: [],
+                    type: 0,
+                    attachments: [{
+                        id: "0",
+                        filename: upload.filename,
+                        uploaded_filename: upload.uploadedFilename,
+                    }],
+                }
+            }).then(() => resolve()).catch(reject);
+        });
+
+        upload.on("error", () => reject(new Error("Failed to upload file")));
+
+        upload.upload();
+    });
+}
+
+function generatePluginList() {
+    const isApiPlugin = (plugin: string) => plugin.endsWith("API") || plugins[plugin].required;
+
+    const enabledPlugins = Object.keys(plugins)
+        .filter(p => isPluginEnabled(p) && !isApiPlugin(p));
+
+    const enabledStockPlugins = enabledPlugins.filter(p => !PluginMeta[p].userPlugin).sort();
+    const enabledUserPlugins = enabledPlugins.filter(p => PluginMeta[p].userPlugin).sort();
+
+    const user = UserStore.getCurrentUser();
+
+    if (enabledPlugins.length > 100 && !isAnyPluginDev(user.id)) {
+        Alerts.show({
+            title: t(plugin.supportHelper.alert.title),
+            body: <div>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
+                    <img src="https://media.tenor.com/QtGqjwBpRzwAAAAi/wumpus-dancing.gif" />
+                </div>
+                <Paragraph>{t(plugin.supportHelper.alert.paragraph1)}</Paragraph>
+                <Paragraph>{t(plugin.supportHelper.alert.paragraph2)}</Paragraph>
+                <Paragraph>{t(plugin.supportHelper.alert.paragraph3)}</Paragraph>
+                <Paragraph>{t(plugin.supportHelper.alert.paragraph4)}</Paragraph>
+                <Paragraph className={Margins.top8}>{t(plugin.supportHelper.alert.paragraph5)}</Paragraph>
+            </div>
+        });
+
+        const fileContent = [
+            `Enabled Stock Plugins (${enabledStockPlugins.length}):`,
+            ...enabledStockPlugins.map(p => `  - ${p}`),
+            "",
+        ];
+
+        if (enabledUserPlugins.length) {
+            fileContent.push(
+                `Enabled User Plugins (${enabledUserPlugins.length}):`,
+                ...enabledUserPlugins.map(p => `  - ${p}`),
+                ""
+            );
+        }
+
+        fileContent.push(
+            "---",
+            `Total Enabled Plugins: ${enabledPlugins.length}`,
+            "Warning: Due to the high number of enabled plugins, support may be limited."
+        );
+
+        return {
+            uploadFile: true,
+            fileContent: fileContent.join("\n"),
+            filename: `${user.username}-plugins.txt`
+        };
+    }
+
+    let content = `**Enabled Plugins (${enabledStockPlugins.length}):**\n${makeCodeblock(enabledStockPlugins.join(", "))}`;
+
+    if (enabledUserPlugins.length) {
+        content += `**Enabled UserPlugins (${enabledUserPlugins.length}):**\n${makeCodeblock(enabledUserPlugins.join(", "))}`;
+    }
+
+    return content;
+}
+
+const checkForUpdatesOnce = onlyOnce(checkForUpdates);
+
+const settings = definePluginSettings({}).withPrivateSettings<{
+    dismissedDevBuildWarning?: boolean;
+}>();
+
+function DevBuildConfirmModal(props: RenderModalProps) {
+    const s = settings.use(["dismissedDevBuildWarning"]);
+
+    return (
+        <ConfirmModal
+            {...props}
+            title={t(plugin.supportHelper.modals.custom.title)}
+            confirmText={t(plugin.supportHelper.modals.custom.button.confirm)}
+            variant="primary"
+            checkboxProps={{
+                label: t(plugin.supportHelper.modals.custom.button.secondaryConfirm),
+                checked: s.dismissedDevBuildWarning === true,
+                onChange: checked => s.dismissedDevBuildWarning = checked
+            }}
+        >
+            <div>
+                <Paragraph>{t(plugin.supportHelper.modals.custom.header)}</Paragraph>
+
+                <Paragraph className={Margins.top8}>
+                    {t(plugin.supportHelper.modals.custom.body, {
+                        officialBuild: <Link href="https://plexcord.club/download">{t(plugin.supportHelper.modals.custom.official)}</Link>,
+                        switch: <Link href="https://plexcord.club/download">{t(plugin.supportHelper.modals.custom.switch)}</Link>
+                    })}
+                </Paragraph>
+
+                <BaseText size="md" weight="bold" className={Margins.top8}>{t(plugin.supportHelper.modals.custom.footer)}</BaseText>
+            </div>
+        </ConfirmModal>
+    );
+}
+
+export default definePlugin({
+    name: "SupportHelper",
+    description: () => t(plugin.supportHelper.description),
+    required: true,
+    authors: [Devs.Ven, PcDevs.MutanPlex],
+    tags: ["utility", "developers"],
+    dependencies: ["UserSettingsAPI", "CommandsAPI", "MessageAccessoriesAPI"],
+    settings,
+
+    patches: [
+        {
+            find: "#{intl::BEGINNING_DM}",
+            replacement: {
+                match: /#{intl::BEGINNING_DM},{.+?}\),(?=.{0,300}(\i)\.isMultiUserDM)/,
+                replace: "$& $self.renderContributorDmWarningCard({ channel: $1 }),"
+            },
+        }
+    ],
+
+    commands: [
+        {
+            name: "plexcord-debug",
+            description: () => t(plugin.supportHelper.commands.description.debug),
+            predicate: ctx => (isPluginDev(UserStore.getCurrentUser()?.id) && isPcPluginDev(UserStore.getCurrentUser()?.id)) || isSupportAllowedChannel(ctx.channel),
+            execute: async () => ({ content: await generateDebugInfoMessage() })
+        },
+        {
+            name: "plexcord-plugins",
+            description: () => t(plugin.supportHelper.commands.description.plugins),
+            predicate: ctx => (isPluginDev(UserStore.getCurrentUser()?.id) && isPcPluginDev(UserStore.getCurrentUser()?.id)) || isSupportAllowedChannel(ctx.channel),
+            execute: async () => {
+                const channelId = SelectedChannelStore.getChannelId();
+                const pluginList = generatePluginList();
+
+                if (typeof pluginList === "string") {
+                    return { content: pluginList };
+                } else if (pluginList && typeof pluginList === "object" && pluginList.uploadFile) {
+                    try {
+                        await uploadPluginListFile(channelId, pluginList.fileContent, pluginList.filename);
+                        return { content: "" }; // Empty return since file was already sent
+                    } catch (e) {
+                        new Logger("SupportHelper").error("Failed to upload plugin list:", e);
+                        return { content: t(plugin.supportHelper.toast.failedUpload) };
+                    }
+                }
+                return { content: t(plugin.supportHelper.toast.unableGenerate) };
+            }
+        }
+    ],
+
+    flux: {
+        async CHANNEL_SELECT({ channelId }) {
+            const isSupportChannel = channelId === SUPPORT_CHANNEL_ID || ChannelStore.getChannel(channelId)?.parent_id === SUPPORT_CATEGORY_ID;
+            if (!isSupportChannel) return;
+
+            const selfId = UserStore.getCurrentUser()?.id;
+            if (!selfId || isAnyPluginDev(selfId)) return;
+
+            if (!IS_UPDATER_DISABLED) {
+                await checkForUpdatesOnce().catch(() => { });
+
+                if (isOutdated) {
+                    openModal(props => (
+                        <ConfirmModal
+                            {...props}
+                            variant="primary"
+                            title={t(plugin.supportHelper.modals.outdated.title)}
+                            confirmText={t(plugin.supportHelper.modals.outdated.button.confirm)}
+                            cancelText={t(plugin.supportHelper.modals.outdated.button.cancel)}
+                            onConfirm={forceUpdate}
+                            onCancel={() => openSettingsTabModal(UpdaterTab!)}
+                        >
+                            <div>
+                                <Paragraph>{t(plugin.supportHelper.modals.outdated.body)}</Paragraph>
+                                <Paragraph className={Margins.top8}>
+                                    {t(plugin.supportHelper.modals.outdated.footer)}
+                                </Paragraph>
+                                <Paragraph className={Margins.top8}>
+                                    {t(plugin.supportHelper.modals.outdated.dismiss)}
+                                </Paragraph>
+                            </div>
+                        </ConfirmModal>
+                    ));
+                    return;
+                }
+            }
+
+            const roles = GuildMemberStore.getSelfMember(PLEXCORD_GUILD_ID)?.roles;
+            if (!roles || TrustedRolesIds.some(id => roles.includes(id))) return;
+
+            if (!IS_WEB && IS_UPDATER_DISABLED) {
+                openModal(props => (
+                    <ConfirmModal
+                        {...props}
+                        title={t(plugin.supportHelper.modals.updater.title)}
+                        confirmText={getIntlMessage("OKAY")}
+                        variant="primary"
+                    >
+                        <div>
+                            <Paragraph>{t(plugin.supportHelper.modals.updater.body)}</Paragraph>
+                            <Paragraph className={Margins.top8}>
+                                {t(plugin.supportHelper.modals.updater.footer, {
+                                    officially: <Link href="https://plexcord.club/download">{t(plugin.supportHelper.modals.updater.officially)}</Link>
+                                })}
+                            </Paragraph>
+                        </div>
+                    </ConfirmModal>
+                ));
+                return;
+            }
+
+            if (!IS_STANDALONE && !settings.store.dismissedDevBuildWarning) {
+                openModal(props => <DevBuildConfirmModal {...props} />);
+                return;
+            }
+        }
+    },
+
+    renderMessageAccessory(props) {
+        if (props.message.plexcordEmbeddedBy) return null;
+
+        const buttons = [] as JSX.Element[];
+
+        const plexcordSupport = isPlexcordGuild(props.message.channel_id) && isSupport(props.message.author.id);
+
+        const shouldAddUpdateButton =
+            !IS_UPDATER_DISABLED
+            && (
+                (props.channel.id === KNOWN_ISSUES_CHANNEL_ID) ||
+                (props.channel.parent_id === SUPPORT_CATEGORY_ID && props.message.author.id === PLEXBOT_USER_ID)
+            )
+            && props.message.content?.toLowerCase().includes("update");
+
+        if (shouldAddUpdateButton) {
+            buttons.push(
+                <Button
+                    key="pc-update"
+                    variant="positive"
+                    onClick={async () => {
+                        try {
+                            if (await forceUpdate())
+                                showToast({ text: t(plugin.supportHelper.modals.updater.toast.success), variant: "success" });
+                            else
+                                showToast({ text: t(plugin.supportHelper.modals.updater.toast.already) });
+                        } catch (e) {
+                            new Logger(t(plugin.supportHelper.name)).error("Error while updating:", e);
+                            showToast({ text: t(plugin.supportHelper.modals.updater.toast.failed), variant: "critical" });
+                        }
+                    }}
+                >
+                    {t(plugin.supportHelper.modals.updater.button.now)}
+                </Button>
+            );
+        }
+
+        if (plexcordSupport && isSupportChannel(props.channel.id) && PermissionStore.can(PermissionsBits.SEND_MESSAGES, props.channel)) {
+            if (props.message.content.includes("/plexcord-debug") || props.message.content.includes("/plexcord-plugins")) {
+                buttons.push(
+                    <Button
+                        key="pc-dbg"
+                        variant="primary"
+                        onClick={async () => sendMessage(props.channel.id, { content: await generateDebugInfoMessage() })}
+                    >
+                        {t(plugin.supportHelper.button.debug)}
+                    </Button>,
+                    <Button
+                        key="pc-plg-list"
+                        variant="primary"
+                        onClick={async () => {
+                            const pluginList = generatePluginList();
+                            if (typeof pluginList === "string") {
+                                sendMessage(props.channel.id, { content: pluginList });
+                            } else if (pluginList && typeof pluginList === "object" && pluginList.uploadFile) {
+                                try {
+                                    await uploadPluginListFile(props.channel.id, pluginList.fileContent, pluginList.filename);
+                                    showToast({ text: t(plugin.supportHelper.toast.upload), variant: "success" });
+                                } catch (e) {
+                                    new Logger("SupportHelper").error("Failed to upload plugin list:", e);
+                                    showToast({ text: t(plugin.supportHelper.toast.failedUpload), variant: "critical" });
+                                }
+                            }
+                        }}
+                    >
+                        {t(plugin.supportHelper.button.plugins)}
+                    </Button>
+                );
+            }
+
+        }
+
+        return buttons.length
+            ? <Flex>{buttons}</Flex>
+            : null;
+    },
+
+    renderContributorDmWarningCard: ErrorBoundary.wrap(({ channel }) => {
+        const userId = channel.getRecipientId();
+        if (!isAnyPluginDev(userId)) return null;
+        if (RelationshipStore.isFriend(userId) || isAnyPluginDev(UserStore.getCurrentUser()?.id)) return null;
+
+        const handleJoinServer = async (e: React.MouseEvent) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            try {
+                const accepted = await openInviteModal("HQGYXm5XSh");
+                if (accepted) {
+                    ChannelRouter.transitionToChannel("1344043206286905364");
+                }
+            } catch (error) {
+                console.error("Failed to open invite modal:", error);
+                showToast({ text: t(plugin.supportHelper.toast.failedOpenInvite), variant: "critical" });
+            }
+        };
+
+        const isInGuild = GuildMemberStore.isMember(PLEXCORD_GUILD_ID, UserStore.getCurrentUser()?.id);
+
+        const channelLink = isInGuild
+            ? Parser.parse("https://discord.com/channels/1342668210331324476/1344043206286905364")
+            : <a onClick={handleJoinServer} style={{ cursor: "pointer", color: "var(--text-link)", textDecoration: "none" }}>#plexcord-support</a>;
+
+        return (
+            <Card variant="warning" className={Margins.top8} defaultPadding>
+                {t(plugin.supportHelper.dm.warning, {
+                    br: <br />,
+                    channel: channelLink,
+                    support: <a onClick={handleJoinServer} style={{ cursor: "pointer", color: "var(--text-link)", textDecoration: "none" }}>Plexcord</a>
+                })}
+            </Card>
+        );
+    }, { noop: true }),
+});

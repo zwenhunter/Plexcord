@@ -1,0 +1,65 @@
+.pc-custom-sounds-card {
+    padding: 1em 1em 0;
+}
+
+.pc-custom-sounds-id {
+    color: var(--text-muted);
+}
+
+.pc-custom-sounds-upload {
+    display: inline;
+}
+
+.pc-custom-sounds-seasonal-title {
+    margin-top: 16px;
+    padding-top: 8px;
+    border-top: 1px solid var(--background-mod-muted);
+}
+
+.pc-custom-sounds-sound-section {
+    margin-bottom: 16px;
+}
+
+.pc-custom-sounds-url-input {
+    width: 100%;
+    padding: 8px;
+    background: var(--input-background-default, var(--input-background));
+    border: none;
+    border-radius: 3px;
+    color: var(--text-normal);
+}
+
+.pc-custom-sounds-buttons {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.pc-custom-sounds-search {
+    margin-bottom: 16px;
+}
+
+.pc-custom-sounds-search input {
+    width: 100%;
+    padding: 8px;
+    background: var(--input-background-default, var(--input-background));
+    border: none;
+    border-radius: 3px;
+    color: var(--text-normal);
+}
+
+.pc-custom-sounds-sounds-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.pc-custom-sounds-override-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.pc-custom-sounds-file-input {
+    display: none;
+}

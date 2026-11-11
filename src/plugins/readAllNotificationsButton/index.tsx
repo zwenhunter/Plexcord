@@ -1,0 +1,107 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import "./style.css";
+
+import { plugin, t } from "@api/i18n";
+import { addServerListElement, removeServerListElement, ServerListItem, ServerListRenderPosition } from "@api/ServerList";
+import { definePluginSettings } from "@api/Settings";
+import { TextButton } from "@components/Button";
+import ErrorBoundary from "@components/ErrorBoundary";
+import { DoubleCheckmarkIcon } from "@components/Icons";
+import { Devs } from "@utils/constants";
+import definePlugin, { OptionType } from "@utils/types";
+import { ActiveJoinedThreadsStore, FluxDispatcher, GuildChannelStore, GuildStore, React, ReadStateStore } from "@webpack/common";
+
+const settings = definePluginSettings({
+    compact: {
+        type: OptionType.BOOLEAN,
+        default: false,
+        label: () => t(plugin.readAllNotificationsButton.option.compact.label),
+        description: () => t(plugin.readAllNotificationsButton.option.compact.description)
+    }
+});
+
+function onClick() {
+    const channels: Array<any> = [];
+
+    Object.values(GuildStore.getGuilds()).forEach(guild => {
+        GuildChannelStore.getChannels(guild.id).SELECTABLE
+            .concat(GuildChannelStore.getChannels(guild.id).VOCAL)
+            .concat(
+                Object.values(ActiveJoinedThreadsStore.getActiveJoinedThreadsForGuild(guild.id))
+                    .flatMap(threadChannels => Object.values(threadChannels))
+            )
+            .forEach((c: { channel: { id: string; }; }) => {
+                if (!ReadStateStore.hasUnread(c.channel.id)) return;
+
+                channels.push({
+                    channelId: c.channel.id,
+                    messageId: ReadStateStore.lastMessageId(c.channel.id),
+                    readStateType: 0
+                });
+            });
+    });
+
+    FluxDispatcher.dispatch({
+        type: "BULK_ACK",
+        context: "APP",
+        channels: channels
+    });
+}
+
+function ReadAllButton() {
+    const { compact } = settings.use(["compact"]);
+
+    return compact ? (
+        <TextButton
+            variant="secondary"
+            onClick={onClick}
+            className="pc-ranb-button"
+        >
+            {t(plugin.readAllNotificationsButton.button)}
+        </TextButton>
+    ) : (
+        <ServerListItem
+            id="pc-ranb-button-container"
+            icon={DoubleCheckmarkIcon}
+            tooltip={t(plugin.readAllNotificationsButton.button)}
+            onClick={onClick}
+        />
+    );
+}
+
+export default definePlugin({
+    name: "ReadAllNotificationsButton",
+    description: () => t(plugin.readAllNotificationsButton.description),
+    authors: [Devs.kemo],
+    tags: ["notifications", "servers", "utility"],
+    dependencies: ["ServerListAPI"],
+    settings,
+
+    renderReadAllButton: ErrorBoundary.wrap(ReadAllButton, { noop: true }),
+
+    start() {
+        addServerListElement(ServerListRenderPosition.Above, this.renderReadAllButton);
+    },
+
+    stop() {
+        removeServerListElement(ServerListRenderPosition.Above, this.renderReadAllButton);
+    }
+});

@@ -1,0 +1,116 @@
+.pc-shiki-container {
+    display: flex;
+    border: 4px;
+    background-color: var(--background-base-lower);
+}
+
+.pc-shiki-container:only-child {
+    min-height: 100%;
+}
+
+.pc-shiki-root {
+    flex: 1;
+    border-radius: 4px;
+}
+
+.pc-shiki-root .pc-shiki-code {
+    display: block;
+    overflow-x: auto;
+    padding: 0.5em;
+    position: relative;
+    font-size: 0.875rem;
+    line-height: 1.125rem;
+    text-indent: 0;
+    white-space: pre-wrap;
+    background: transparent;
+    border: none;
+}
+
+.pc-shiki-plain .pc-shiki-code {
+    padding-top: 8px;
+}
+
+.pc-shiki-container:only-child .pc-shiki-root {
+    display: flex;
+}
+
+.pc-shiki-container:only-child .pc-shiki-code {
+    flex: 1;
+}
+
+.pc-shiki-devicon {
+    margin-right: 8px;
+    user-select: none;
+}
+
+.pc-shiki-btns {
+    font-size: 1em;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    opacity: 0;
+}
+
+.pc-shiki-root:hover .pc-shiki-btns {
+    opacity: 1;
+}
+
+.pc-shiki-btn {
+    border-radius: 4px 4px 0 0;
+    padding: 4px 8px;
+    user-select: none;
+}
+
+.pc-shiki-btn ~ .pc-shiki-btn {
+    margin-left: 4px;
+}
+
+.pc-shiki-btn:last-child {
+    border-radius: 4px 0;
+}
+
+.pc-shiki-spinner-container {
+    align-items: center;
+    background-color: rgb(0 0 0 / 60%);
+    display: flex;
+    position: absolute;
+    justify-content: center;
+    inset: 0;
+}
+
+.pc-shiki-preview {
+    margin-bottom: 2em;
+}
+
+.pc-shiki-lang {
+    padding: 0 5px;
+    margin-bottom: 6px;
+    font-weight: bold;
+    text-transform: capitalize;
+    display: flex;
+    align-items: center;
+}
+
+.pc-shiki-table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.pc-shiki-table-row {
+    height: 19px;
+    width: 100%;
+}
+
+.pc-shiki-root .pc-shiki-table-cell:first-child {
+    border-right: 1px solid transparent;
+    padding-left: 5px;
+    padding-right: 8px;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.pc-shiki-root .pc-shiki-table-cell:last-child {
+    padding-left: 8px;
+    overflow-wrap: anywhere;
+    width: 100%;
+}

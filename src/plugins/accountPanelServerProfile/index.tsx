@@ -1,0 +1,158 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { isPluginEnabled } from "@api/PluginManager";
+import { definePluginSettings } from "@api/Settings";
+import ErrorBoundary from "@components/ErrorBoundary";
+import { User } from "@plexcord/discord-types";
+import alwaysExpandProfiles from "@plugins/alwaysExpandProfiles";
+import { Devs } from "@utils/constants";
+import { fetchUserProfile, getCurrentChannel, openUserProfile } from "@utils/discord";
+import definePlugin, { OptionType } from "@utils/types";
+import { findComponentByCodeLazy } from "@webpack";
+import { ContextMenuApi, Menu, useEffect, UserStore } from "@webpack/common";
+
+interface UserProfileProps {
+    popoutProps: Record<string, any>;
+    currentUser: User;
+    originalRenderPopout: () => React.ReactNode;
+}
+
+const UserProfile = findComponentByCodeLazy(".isNonUserBot()?", ",onClickContainer:");
+
+let openAlternatePopout = false;
+let accountPanelRef: React.RefObject<HTMLDivElement | null> = { current: null };
+
+const AccountPanelContextMenu = ErrorBoundary.wrap(() => {
+    const { prioritizeServerProfile } = settings.use(["prioritizeServerProfile"]);
+
+    return (
+        <Menu.Menu
+            navId="pc-ap-server-profile"
+            onClose={ContextMenuApi.closeContextMenu}
+        >
+            <Menu.MenuItem
+                id="pc-ap-view-alternate-popout"
+                label={prioritizeServerProfile ? t(plugin.accountPanelServerProfile.context.account) : t(plugin.accountPanelServerProfile.context.server)}
+                disabled={getCurrentChannel()?.getGuildId() == null}
+                action={async e => {
+                    if (isPluginEnabled(alwaysExpandProfiles.name)) {
+                        const user = await fetchUserProfile(UserStore.getCurrentUser().id, {
+                            guild_id: prioritizeServerProfile ? undefined : getCurrentChannel()?.getGuildId()
+                        }, false);
+                        return openUserProfile(user!.userId);
+                    }
+                    openAlternatePopout = true;
+                    accountPanelRef.current?.click();
+                }}
+            />
+            <Menu.MenuCheckboxItem
+                id="pc-ap-prioritize-server-profile"
+                label={t(plugin.accountPanelServerProfile.context.prioritize)}
+                checked={prioritizeServerProfile}
+                action={() => settings.store.prioritizeServerProfile = !prioritizeServerProfile}
+            />
+        </Menu.Menu>
+    );
+}, { noop: true });
+
+const settings = definePluginSettings({
+    prioritizeServerProfile: {
+        label: () => t(plugin.accountPanelServerProfile.option.prioritizeServerProfile.label),
+        description: () => t(plugin.accountPanelServerProfile.option.prioritizeServerProfile.description),
+        type: OptionType.BOOLEAN,
+        default: false,
+    }
+});
+
+export default definePlugin({
+    name: "AccountPanelServerProfile",
+    description: () => t(plugin.accountPanelServerProfile.description),
+    authors: [Devs.Nuckyz, Devs.relitrix],
+    tags: ["servers", "utility"],
+    settings,
+
+    patches: [
+        {
+            find: "handleOpenSettingsContextMenu=",
+            group: true,
+            replacement: [
+                {
+                    match: /(\.AVATAR,children:.+?renderPopout:\((\i),\i\)=>)\{(.+?)\}(?=,position)(?<=currentUser:(\i).+?)/,
+                    replace: (_, rest, popoutProps, originalPopout, currentUser) => `${rest}$self.UserProfile({popoutProps:${popoutProps},currentUser:${currentUser},originalRenderPopout:()=>{${originalPopout}}})`
+                },
+                {
+                    match: /\.AVATAR,children:.+?onRequestClose:\(\)=>\{/,
+                    replace: "$&$self.onPopoutClose();"
+                },
+                {
+                    // style may already be rewritten by the UserArea API patch
+                    match: /ref:(\i),style:(?:\i|\{[^}]*\})(?=.{0,250}#{intl::USER_PROFILE_ACCOUNT_POPOUT_BUTTON_A11Y_LABEL})/,
+                    replace: "$&,onContextMenu:($self.grabRef($1),$self.openAccountPanelContextMenu)"
+                }
+            ],
+            noWarn: true
+        }
+    ],
+
+    get accountPanelRef() {
+        return accountPanelRef;
+    },
+
+    grabRef(ref: React.RefObject<HTMLDivElement>) {
+        accountPanelRef = ref;
+        return ref;
+    },
+
+    openAccountPanelContextMenu(event: React.UIEvent) {
+        ContextMenuApi.openContextMenu(event, AccountPanelContextMenu);
+    },
+
+    onPopoutClose() {
+        openAlternatePopout = false;
+    },
+
+    UserProfile: ErrorBoundary.wrap(({ popoutProps, currentUser, originalRenderPopout }: UserProfileProps) => {
+        if (
+            (settings.store.prioritizeServerProfile && openAlternatePopout) ||
+            (!settings.store.prioritizeServerProfile && !openAlternatePopout)
+        ) {
+            return originalRenderPopout();
+        }
+
+        const currentChannel = getCurrentChannel();
+        if (currentChannel?.getGuildId() == null || !UserProfile.$$plexcordGetWrappedComponent()) {
+            return originalRenderPopout();
+        }
+
+        if (isPluginEnabled(alwaysExpandProfiles.name)) {
+            return <ServerProfileLauncher popoutProps={popoutProps} userId={currentUser.id} guildId={currentChannel.getGuildId()!} />;
+        }
+
+        return (
+            <UserProfile
+                {...popoutProps}
+                user={currentUser}
+                currentUser={currentUser}
+                guildId={currentChannel.getGuildId()}
+                channelId={currentChannel.id}
+            />
+        );
+    }, { noop: true })
+});
+
+function ServerProfileLauncher({ popoutProps, userId, guildId }: { popoutProps: Record<string, any>; userId: string; guildId: string; }) {
+    useEffect(() => {
+        popoutProps.closePopout?.();
+        popoutProps.onRequestClose?.();
+        fetchUserProfile(userId, { guild_id: guildId }, false).then(user => {
+            if (user) openUserProfile(user.userId);
+        });
+    }, []);
+    return null;
+}

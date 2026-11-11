@@ -1,0 +1,151 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2025 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { getUserSettingLazy } from "@api/UserSettings";
+import { Heading } from "@components/Heading";
+import { Margins } from "@components/margins";
+import { Paragraph } from "@components/Paragraph";
+import { VoiceState } from "@plexcord/discord-types";
+import { Devs, PcDevs } from "@utils/constants";
+import definePlugin from "@utils/types";
+import { findByCodeLazy } from "@webpack";
+import { ApplicationStreamingSettingsStore, ChannelStore, MediaEngineStore, PermissionsBits, PermissionStore, SelectedChannelStore, showToast, UserStore, VoiceActions, WindowStore } from "@webpack/common";
+
+import { getCurrentMedia, settings } from "./utils";
+
+let hasStreamed, isStreaming, streamKey;
+const startStream = findByCodeLazy('type:"STREAM_START"');
+const stopStream = findByCodeLazy('type:"STREAM_STOP"');
+const StreamPreviewSettings = getUserSettingLazy("voiceAndVideo", "disableStreamPreviews")!;
+
+async function autoStartStream(instant = true) {
+    if (!instant && !WindowStore.isFocused() && settings.store.focusDiscord) return;
+    const selected = SelectedChannelStore.getVoiceChannelId();
+    if (!selected) return;
+
+    const channel = ChannelStore.getChannel(selected);
+    if (!channel) return;
+
+    const isGuildChannel = !channel.isDM() && !channel.isGroupDM();
+
+    if (channel.type === 13 || isGuildChannel && !PermissionStore.can(PermissionsBits.STREAM, channel)) return;
+
+    if (settings.store.autoDeafen && !MediaEngineStore.isSelfDeaf() && instant) {
+        VoiceActions.toggleSelfDeaf();
+    } else if (settings.store.autoMute && !MediaEngineStore.isSelfMute() && instant) {
+        VoiceActions.toggleSelfMute();
+    }
+
+    const streamMedia = await getCurrentMedia();
+    const preview = StreamPreviewSettings.getSetting();
+    const { soundshareEnabled } = ApplicationStreamingSettingsStore.getState();
+    let sourceId = streamMedia.id;
+    if (streamMedia.type === "video_device") sourceId = `camera:${streamMedia.id}`;
+
+    if (isStreaming && streamKey.endsWith(UserStore.getCurrentUser().id)) {
+        stopStream(streamKey);
+    } else {
+        startStream(channel.guild_id ?? null, selected, {
+            "pid": null,
+            "sourceId": sourceId,
+            "sourceName": streamMedia.name,
+            "audioSourceId": streamMedia.name,
+            "sound": soundshareEnabled,
+            "previewDisabled": preview
+        });
+    }
+}
+
+export default definePlugin({
+    name: "InstantScreenshare",
+    description: () => t(plugin.instantScreenshare.description),
+    authors: [Devs.HAHALOSAH, Devs.thororen, PcDevs.mart],
+    tags: ["voice", "media", "shortcuts", "utility"],
+    dependencies: ["PlexcordToolbox"],
+    autoStartStream,
+    settings,
+
+    settingsAboutComponent: () => (
+        <>
+            <Heading tag="h3" className={Margins.bottom8}>{t(plugin.instantScreenshare.modal.linux.title)}</Heading>
+            <Paragraph>
+                {t(plugin.instantScreenshare.modal.linux.body)}
+                <br />
+                {t(plugin.instantScreenshare.modal.linux.bodyTwo)}
+            </Paragraph>
+            <br />
+            <Heading tag="h3" className={Margins.bottom8}>{t(plugin.instantScreenshare.modal.videoDevices.title)}</Heading>
+            <Paragraph>
+                {t(plugin.instantScreenshare.modal.videoDevices.body)}
+            </Paragraph>
+            <br />
+            <Heading tag="h3" className={Margins.bottom8}>{t(plugin.instantScreenshare.modal.regardingSound.title)}</Heading>
+            <Paragraph>
+                {t(plugin.instantScreenshare.modal.regardingSound.body)}
+            </Paragraph>
+        </>
+    ),
+
+    getToolboxLabel: () => t(plugin.instantScreenshare.toolbox.label),
+
+    patches: [
+        {
+            find: "DISCONNECT_FROM_VOICE_CHANNEL]",
+            predicate: () => settings.store.keybindScreenshare,
+            replacement: {
+                match: /\[\i\.\i\.DISCONNECT_FROM_VOICE_CHANNEL/,
+                replace: '["INSTANT_SCREEN_SHARE"]:{onTrigger(){$self.autoStartStream(false)},keyEvents:{keyUp:!1,keyDown:!0}},$&'
+            },
+        },
+        {
+            find: '"push-to-talk-priority"',
+            predicate: () => settings.store.keybindScreenshare,
+            replacement: {
+                match: /=\[(\{id:.{0,25}value:\i\.\i\.UNASSIGNED)/,
+                replace: '=[{id:"instant-screen-share",value:"INSTANT_SCREEN_SHARE",label:$self.getToolboxLabel()},$1'
+            }
+        }
+    ],
+
+    flux: {
+        async VOICE_STATE_UPDATES({ voiceStates }: { voiceStates: VoiceState[]; }) {
+            if (!settings.store.toolboxManagement || !settings.store.instantScreenshare) return;
+            const myId = UserStore.getCurrentUser().id;
+            for (const state of voiceStates) {
+                const { userId, channelId } = state;
+                if (userId !== myId) continue;
+
+                if (channelId && !hasStreamed) {
+                    hasStreamed = true;
+                    await autoStartStream();
+                }
+
+                if (!channelId) {
+                    hasStreamed = false;
+                }
+
+                break;
+            }
+        },
+        STREAM_CREATE: d => {
+            streamKey = d;
+            isStreaming = true;
+        },
+        STREAM_DELETE: d => {
+            streamKey = d;
+            isStreaming = false;
+        }
+    },
+
+    toolboxActions: () => ({
+        [t(plugin.instantScreenshare.text.instantScreenshare)]() {
+            settings.store.toolboxManagement = !settings.store.toolboxManagement;
+            showToast({ text: t(plugin.instantScreenshare.toast.instantScreenshareDisabled, { disabled: settings.store.toolboxManagement ? t(plugin.instantScreenshare.toolbox.enabled) : t(plugin.instantScreenshare.toolbox.disabled) }), variant: "success" });
+        }
+    })
+});

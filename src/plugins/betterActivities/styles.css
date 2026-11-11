@@ -1,0 +1,100 @@
+.pc-bactivities-row {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    margin-left: 5px;
+    text-align: center;
+    gap: 3px;
+}
+
+.pc-bactivities-icon {
+    height: var(--icon-size);
+    width: var(--icon-size);
+}
+
+.pc-bactivities-icon img {
+    width: var(--icon-size);
+    height: var(--icon-size);
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.pc-bactivities-activity-tooltip {
+    padding: 1px;
+}
+
+.pc-bactivities-caret-left,
+.pc-bactivities-caret-right {
+    color: #ddd;
+}
+
+.pc-bactivities-caret-left {
+    transform: rotate(90deg);
+}
+
+.pc-bactivities-caret-right {
+    transform: rotate(-90deg);
+}
+
+.pc-bactivities-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px;
+    background: var(--background-base-lower-alt);
+    border-radius: 3px;
+    flex: 1 0;
+    margin-top: 10px;
+    background-color: var(--user-profile-overlay-background);
+}
+
+.pc-bactivities-controls [class*="pc-activities-caret-"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 3px;
+    background-color: #ffffff4d;
+}
+
+.pc-bactivities-controls [class*="pc-activities-caret-"].disabled {
+    cursor: not-allowed;
+    opacity: 0.3;
+}
+
+.pc-bactivities-controls [class*="pc-activities-caret-"]:hover:not(.disabled) {
+    background: var(--input-border-default, var(--input-border));
+}
+
+.pc-bactivities-controls .pc-bactivities-controls-carousel {
+    display: flex;
+    align-items: center;
+}
+
+.pc-bactivities-controls .pc-bactivities-controls-carousel .pc-bactivities-controls-dot {
+    margin: 0 4px;
+    width: 10px;
+    cursor: pointer;
+    height: 10px;
+    border-radius: 100px;
+    background: var(--interactive-muted);
+    transition: background 0.3s;
+    opacity: 0.6;
+}
+
+.pc-bactivities-controls
+    .pc-bactivities-controls-carousel
+    .pc-bactivities-controls-dot:hover:not(.pc-bactivities-controls-selected) {
+    opacity: 1;
+}
+
+.pc-bactivities-controls
+    .pc-bactivities-controls-carousel
+    .pc-bactivities-controls-dot.pc-bactivities-controls-selected {
+    opacity: 1;
+    background: var(--dot-color, var(--brand-500));
+}
+
+.pc-bactivities-controls-tooltip {
+    --background-floating: var(--background-secondary-alt);
+}

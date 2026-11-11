@@ -1,0 +1,207 @@
+#pc-tdl-player {
+    padding: 12px;
+    background: var(--background-base-low);
+    margin: 0;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+
+    --pc-tdl-slider-gradient: linear-gradient(to right, #f03 80%, #ff2791 100%);
+    --pc-tdl-slider-grabber: #f03;
+
+    /* so custom themes can easily change it */
+    --pc-tdl-red-90: color-mix(in hsl, var(--pc-tdl-slider-grabber), transparent 90%);
+    --pc-tdl-red-80: color-mix(in hsl, var(--pc-tdl-slider-grabber), transparent 80%);
+}
+
+.pc-tdl-song-info-prefix {
+    display: none;
+}
+
+.pc-tdl-artist,
+.pc-tdl-album {
+    color: var(--text-strong);
+}
+
+.pc-tdl-secondary-song-info {
+    font-size: 12px;
+}
+
+#pc-tdl-progress-bar {
+    position: relative;
+    color: var(--text-default);
+    width: 100%;
+    margin: 0.5em 0;
+    margin-bottom: 5px;
+}
+
+#pc-tdl-progress-bar > [class*="slider"] {
+    flex-grow: 1;
+    width: 100%;
+    padding: 0 !important;
+}
+
+#pc-tdl-progress-bar > [class*="slider"] [class*="bar"] {
+    height: 3px !important;
+    top: calc(12px - 4px / 2 + var(--bar-offset));
+}
+
+#pc-tdl-progress-bar > [class*="slider"] [class*="barFill"] {
+    background-image: var(--pc-tdl-slider-gradient);
+}
+
+#pc-tdl-progress-bar > [class*="slider"]:hover [class*="barFill"] {
+    background-image: var(--pc-tdl-slider-gradient);
+}
+
+#pc-tdl-progress-bar > [class*="slider"] [class*="grabber"] {
+    background-color: var(--pc-tdl-slider-grabber);
+    width: 12px !important;
+    height: 12px !important;
+    margin-top: calc(13px/-2 + var(--bar-offset)/2);
+    margin-left: -0.5px;
+    border: unset;
+    color: var(--interactive-icon-default);
+    opacity: 0;
+    transition: opacity 0.1s;
+}
+
+#pc-tdl-progress-bar:hover > [class*="slider"] [class*="grabber"] {
+    opacity: 1;
+}
+
+.pc-tdl-progress-time {
+    margin-top: 8px;
+    font-family: var(--font-code);
+    font-size: 12px;
+    top: 10px;
+    position: absolute;
+}
+
+.pc-tdl-button-row {
+    justify-content: center;
+    margin-top: 14px;
+}
+
+.pc-tdl-button {
+    margin: 0 2px;
+    border-radius: var(--radius-sm);
+    background: none;
+    color: var(--interactive-icon-default);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.pc-tdl-button:hover {
+    color: var(--interactive-icon-hover);
+    background-color: var(--background-mod-strong);
+}
+
+.pc-tdl-button svg {
+    height: 24px;
+    width: 24px;
+}
+
+[class*="shuffle"] > svg,
+[class*="repeat"] > svg {
+    width: 22px;
+    height: 22px;
+}
+
+.pc-tdl-button svg path {
+    width: 100%;
+    height: 100%;
+}
+
+.pc-tdl-repeat-context,
+.pc-tdl-repeat-track,
+.pc-tdl-shuffle-on {
+    background-color: var(--pc-tdl-red-90);
+}
+
+.pc-tdl-repeat-context:hover,
+.pc-tdl-repeat-track:hover,
+.pc-tdl-shuffle-on:hover {
+    background-color: var(--pc-tdl-red-80);
+}
+
+.pc-tdl-repeat-1 {
+    font-size: 70%;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-55%, -50%);
+}
+
+#pc-tdl-info-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    height: 3em;
+    gap: 0.5em;
+}
+
+#pc-tdl-info-wrapper img {
+    height: 90%;
+    object-fit: contain;
+}
+
+#pc-tdl-album-expanded-wrapper img {
+    width: 100%;
+    object-fit: contain;
+}
+
+#pc-tdl-titles {
+    display: flex;
+    flex-direction: column;
+    padding: 0.2rem;
+    align-items: flex-start;
+    place-content: flex-start center;
+    overflow: hidden;
+}
+
+#pc-tdl-song-title {
+    color: var(--text-strong);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.pc-tdl-ellipoverflow {
+    white-space: nowrap;
+    overflow: hidden;
+    width: 100%;
+    text-overflow: ellipsis;
+}
+
+.pc-tdl-artist[role="link"]:hover,
+#pc-tdl-album-title[role="link"]:hover,
+#pc-tdl-song-title[role="link"]:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+#pc-tdl-album-image {
+    border-radius: 3px;
+    transition: filter 0.2s;
+}
+
+#pc-tdl-album-image:hover {
+    filter: brightness(1.2);
+    cursor: pointer;
+}
+
+#pc-tdl-progress-text {
+    margin: 0;
+}
+
+.pc-tdl-time-left {
+    left: 0;
+}
+
+.pc-tdl-time-right {
+    right: 0;
+}

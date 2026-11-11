@@ -1,0 +1,15 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { classNameFactory } from "@utils/css";
+import { extractAndLoadChunksLazy, findCssClassesLazy } from "@webpack";
+
+export const cl = classNameFactory("pc-decor-");
+export const DecorationModalClasses = findCssClassesLazy("modalPreview", "modalCloseButton", "spinner", "modal");
+
+export const requireAvatarDecorationModal = extractAndLoadChunksLazy(["initialSelectedDecoration:", /initialSelectedDecoration:\i,.{0,300}\i\.e\(/]);
+export const requireCreateStickerModal = extractAndLoadChunksLazy([".CREATE_STICKER_MODAL,", "isDisplayingIndividualStickers"]);

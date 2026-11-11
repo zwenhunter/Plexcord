@@ -1,0 +1,54 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import ErrorBoundary from "@components/ErrorBoundary";
+import { Embed } from "@plexcord/discord-types";
+import { Devs, PcDevs } from "@utils/constants";
+import definePlugin from "@utils/types";
+import { useState } from "@webpack/common";
+
+interface ToggleableDescriptionProps { embed: Embed, original: () => any; }
+
+export default definePlugin({
+    name: "YoutubeDescription",
+    description: () => t(plugin.youtubeDescription.description),
+    authors: [Devs.arHSM, PcDevs.MutanPlex],
+    tags: ["media", "chat", "utility"],
+
+    patches: [
+        {
+            find: "this.renderContentPlaceholder({",
+            replacement: {
+                match: /(\i)=(\i\.\i\.has\((\i)\.type\))\?null:(?:(this\.renderDescription)\(\))/,
+                replace: '$1=$3.type==="video"?$self.ToggleableDescriptionWrapper({embed:this.props.embed,original:$4.bind(this)}):($2?null:$4())'
+            }
+        }
+    ],
+    ToggleableDescription: ErrorBoundary.wrap(({ embed, original }: ToggleableDescriptionProps) => {
+        const [isOpen, setOpen] = useState(false);
+
+        if (!embed.rawDescription)
+            return null;
+        if (embed.rawDescription.length <= 20)
+            return original();
+
+        return (
+            <div
+                style={{ cursor: "pointer", marginTop: isOpen ? "0px" : "8px" }}
+                onClick={() => setOpen(o => !o)}
+            >
+                {isOpen
+                    ? original()
+                    : embed.rawDescription.substring(0, 20) + "..."}
+            </div>
+        );
+    }),
+    ToggleableDescriptionWrapper(props: ToggleableDescriptionProps) {
+        return <this.ToggleableDescription {...props} ></this.ToggleableDescription >;
+    }
+});

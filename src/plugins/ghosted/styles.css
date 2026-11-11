@@ -1,0 +1,56 @@
+.pc-boo-icon {
+    height: 42px;
+}
+
+.pc-boo-clickable {
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+}
+
+.pc-boo-clickable:hover {
+    opacity: 0.8;
+}
+
+.pc-boo-clickable:active {
+    opacity: 0.6;
+}
+
+/* modal styling */
+.pc-boo-ghosted-entry {
+    padding: 12px;
+    cursor: pointer;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background-color: var(--background-secondary-alt);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.1s ease;
+}
+
+.pc-boo-ghosted-entry:hover {
+    background-color: var(--background-mod-subtle);
+}
+
+.pc-boo-user-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.pc-boo-clear {
+    margin-right: 16px;
+}
+
+.pc-boo-modal-header {
+    flex-grow: 1;
+}
+
+.pc-boo-modal-content {
+    padding: 16px 0;
+}
+
+.pc-boo-modal-text {
+    color: var(--text-muted);
+}

@@ -1,0 +1,53 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { Devs, PcDevs } from "@utils/constants";
+import { classNameFactory } from "@utils/css";
+import definePlugin from "@utils/types";
+import { findComponentByCodeLazy } from "@webpack";
+import { PrivateChannelSortStore, TypingStore, UserStore, useStateFromStores } from "@webpack/common";
+
+const cl = classNameFactory("pc-home-typing-");
+
+const ThreeDots = findComponentByCodeLazy("Math.min(1,Math.max(", "dotRadius:");
+
+export default definePlugin({
+    name: "HomeTyping",
+    description: () => t(plugin.homeTyping.description),
+    authors: [Devs.Samwich, PcDevs.MutanPlex],
+    tags: ["chat", "friends", "utility"],
+
+    TypingIcon() {
+        return <ThreeDots className={cl("dots")} dotRadius={3} themed={true} />;
+    },
+    isTyping() {
+        return useStateFromStores([TypingStore], () =>
+            PrivateChannelSortStore.getPrivateChannelIds().some(id =>
+                Object.keys(TypingStore.getTypingUsers(id)).some(userId => userId !== UserStore.getCurrentUser().id)
+            )
+        );
+    },
+    patches: [
+        {
+            find: "#{intl::DISCODO_DISABLED}",
+            replacement:
+                [
+                    {
+                        match: /(?<=BUTTON_HOME.{0,10}children:)(\(0,\i.jsxs?\)\(\i,{}\))/,
+                        replace: "arguments[0].user == null ? null : (pcIsTyping ? $self.TypingIcon() : $1)"
+                    },
+                    // define isTyping earlier in the function so i dont bReAk ThE rUlEs Of HoOkS
+                    {
+                        match: /if\(null==\i\)return null;/,
+                        replace: "let pcIsTyping = $self.isTyping();$&"
+                    }
+                ],
+            group: true
+        }
+    ]
+});

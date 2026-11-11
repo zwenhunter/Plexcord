@@ -1,0 +1,29 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { Devs } from "@utils/constants";
+import definePlugin from "@utils/types";
+
+export default definePlugin({
+    name: "ImageLink",
+    description: () => t(plugin.imageLink.description),
+    authors: [Devs.Kyuuhachi, Devs.Sqaaakoi],
+    tags: ["media", "utility"],
+
+    patches: [
+        {
+            // small util file
+            find: "linkCount:0,onlyLinks:!1",
+            replacement: {
+                // SimpleEmbedTypes.has(embed.type) && isEmbedInline(embed)
+                match: /\i\.has\(\i\.type\)&&\(0,\i\.\i\)\(\i\)/,
+                replace: "false",
+            }
+        }
+    ]
+});

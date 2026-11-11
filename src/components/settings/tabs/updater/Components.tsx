@@ -1,0 +1,148 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2025 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { t, updater } from "@api/i18n";
+import { Button } from "@components/Button";
+import { Card } from "@components/Card";
+import { ErrorCard } from "@components/ErrorCard";
+import { Flex } from "@components/Flex";
+import { Link } from "@components/Link";
+import { Paragraph } from "@components/Paragraph";
+import { Span } from "@components/Span";
+import { Margins } from "@utils/margins";
+import { promptToRestart } from "@utils/promptToRestart";
+import { changes, checkForUpdates, update, updateError } from "@utils/updater";
+import { React, showToast, useState } from "@webpack/common";
+
+import { runWithDispatch } from "./runWithDispatch";
+
+export interface CommonProps {
+    repo: string;
+    repoPending: boolean;
+}
+
+export function HashLink({ repo, hash, disabled = false }: { repo: string, hash: string, disabled?: boolean; }) {
+    return (
+        <Link href={`${repo}/commit/${hash}`} disabled={disabled}>
+            {hash.slice(0, 7)}
+        </Link>
+    );
+}
+
+export function Changes({ updates, repo, repoPending }: CommonProps & { updates: typeof changes; }) {
+    return (
+        <Card className={Margins.top16} style={{ padding: 0 }} defaultPadding={false}>
+            {updates.map(({ hash, author, message }, i) => (
+                <div
+                    key={hash}
+                    style={{
+                        padding: "12px 16px",
+                        borderBottom: i < updates.length - 1 ? "1px solid var(--border-subtle)" : undefined
+                    }}
+                >
+                    <Flex style={{ alignItems: "center", gap: 8 }}>
+                        <code style={{ color: "var(--text-link)" }}>
+                            <HashLink {...{ repo, hash }} disabled={repoPending} />
+                        </code>
+                        <Span size="sm" color="text-default">
+                            {message}
+                        </Span>
+                        <Span size="sm" color="text-subtle">
+                            — {author}
+                        </Span>
+                    </Flex>
+                </div>
+            ))}
+        </Card>
+    );
+}
+
+export function Newer(props: CommonProps) {
+    return (
+        <>
+            <Paragraph>
+                {t(updater.github.local)}
+            </Paragraph>
+            <Changes {...props} updates={changes} />
+        </>
+    );
+}
+
+export function Updatable(props: CommonProps) {
+    const [updates, setUpdates] = useState(changes);
+    const [isChecking, setIsChecking] = useState(false);
+    const [isUpdating, setIsUpdating] = useState(false);
+
+    const isOutdated = (updates?.length ?? 0) > 0;
+
+    return (
+        <>
+            <Flex className={Margins.bottom8} gap="8px">
+                <Button
+                    size="small"
+                    disabled={isUpdating || isChecking}
+                    onClick={runWithDispatch(setIsChecking, async () => {
+                        const outdated = await checkForUpdates();
+
+                        if (outdated) {
+                            setUpdates(changes);
+                        } else {
+                            setUpdates([]);
+
+                            showToast({
+                                text: t(updater.successful.noFound),
+                                position: "bottom"
+                            });
+                        }
+                    })}
+                >
+                    {t(updater.successful.button.check)}
+                </Button>
+                {isOutdated && (
+                    <Button
+                        size="small"
+                        variant="primary"
+                        disabled={isUpdating || isChecking}
+                        onClick={runWithDispatch(setIsUpdating, async () => {
+                            if (await update()) {
+                                setUpdates([]);
+
+                                promptToRestart("relaunch", {
+                                    title: t(updater.successful.title),
+                                    subtitle: t(updater.successful.body),
+                                    confirmText: t(updater.successful.button.confirm),
+                                    cancelText: t(updater.successful.button.cancel)
+                                });
+                            }
+                        })}
+                    >
+                        {t(updater.successful.button.update)}
+                    </Button>
+                )}
+            </Flex>
+            {!updates && updateError ? (
+                <>
+                    <Span size="md" weight="medium" color="text-strong">{t(updater.error.check)}</Span>
+                    <ErrorCard className={Margins.top8} style={{ padding: "1em" }}>
+                        <p>{updateError.stderr || updateError.stdout || t(updater.error.occurred)}</p>
+                    </ErrorCard>
+                </>
+            ) : isOutdated ? (
+                <>
+                    <Paragraph>
+                        {(updates.length === 1 ? t(updater.available) : t(updater.available_plural, { count: updates.length }))}
+                    </Paragraph>
+                    <Changes updates={updates} {...props} />
+                </>
+            ) : (
+                <Paragraph>
+                    {t(updater.current)}
+                </Paragraph>
+            )}
+        </>
+    );
+}

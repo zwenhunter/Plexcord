@@ -1,0 +1,14 @@
+.pc-keywordnotify-delete {
+    padding: 0;
+    color: var(--primary-400);
+    transition: color 0.2s ease-in-out;
+}
+
+.pc-keywordnotify-delete:hover {
+    color: var(--status-danger);
+}
+
+.pc-keywordnotify-ignoreCaseSwitch {
+    margin-top: 0.5em;
+    margin-right: 40px;
+}

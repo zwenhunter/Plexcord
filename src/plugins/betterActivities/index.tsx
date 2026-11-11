@@ -1,0 +1,60 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import "./styles.css";
+
+import { plugin, t } from "@api/i18n";
+import { Devs } from "@utils/constants";
+import definePlugin from "@utils/types";
+
+import { patchActivityList } from "./patch-helpers/activityList";
+import { showAllActivitiesComponent } from "./patch-helpers/popout";
+import { settings } from "./settings";
+
+export default definePlugin({
+    name: "BetterActivities",
+    description: () => t(plugin.betterActivities.description),
+    authors: [Devs.D3SOX, Devs.Arjix, Devs.AutumnVN, Devs.thororen],
+    tags: ["activity"],
+    settings,
+
+    patchActivityList,
+    showAllActivitiesComponent,
+
+    patches: [
+        {
+            // Patch activity icons
+            find: '"ActivityStatus"),',
+            replacement: [
+                {
+                    match: /(?<=className:\i,children:\[).*?(?=\i\(\),\i&&)/,
+                    replace: "",
+                    predicate: () => settings.store.removeGameActivityStatus,
+                },
+                {
+                    match: /(?<=className:\i,children:\[\i\(\),)null.*?tooltipClassName:\i\}\),/,
+                    replace: "",
+                    predicate: () => settings.store.removeGameActivityStatus,
+                },
+                {
+                    match: /(?<=hideTooltip:.{0,4}}=(\i).*?{}\))\]/g,
+                    replace: ",$self.patchActivityList($1)]",
+                    predicate: () => settings.store.memberList,
+                }
+            ],
+        },
+        {
+            // Show all activities in the user popout/sidebar
+            find: '"UserProfilePopout");',
+            replacement: {
+                match: /((\i)=.{0,10}(\i)\.id\).*?)\(0,\i\.jsxs?.{0,150}onClose:\i\}\)(?=.{0,30}userId:\i\.id)/,
+                replace: "$1$self.showAllActivitiesComponent({ activity: $2, user: $3 })"
+            },
+            predicate: () => settings.store.userPopout
+        },
+    ],
+});

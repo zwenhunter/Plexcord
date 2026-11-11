@@ -1,0 +1,16 @@
+.pc-toolbox-btn,
+.pc-toolbox-icon {
+    -webkit-app-region: no-drag;
+}
+
+.pc-toolbox-icon {
+    color: var(--interactive-icon-default);
+}
+
+.pc-toolbox-btn[class*="selected"] .pc-toolbox-icon {
+    color: var(--interactive-icon-active);
+}
+
+.pc-toolbox-btn:hover .pc-toolbox-icon {
+    color: var(--interactive-icon-hover);
+}

@@ -1,0 +1,30 @@
+.pc-trans-accessory {
+    color: var(--text-muted);
+    margin-top: 0.5em;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.2rem;
+    white-space: break-spaces;
+}
+
+.pc-trans-accessory-icon {
+    margin-right: 0.25em;
+}
+
+.pc-trans-dismiss {
+    all: unset;
+    cursor: pointer;
+    color: var(--text-link);
+}
+
+.pc-trans-dismiss:is(:hover, :focus) {
+    text-decoration: underline;
+}
+
+.pc-trans-auto-translate {
+    color: var(--green-360);
+}
+
+.pc-trans-chat-button {
+    scale: 1.085;
+}

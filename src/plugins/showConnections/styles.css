@@ -1,0 +1,19 @@
+.pc-user-connection {
+    all: unset;
+    display: inline-block;
+    cursor: pointer;
+}
+
+.pc-sc-tooltip {
+    display: inline-flex;
+    gap: 0.25em;
+    align-items: center;
+}
+
+.pc-sc-connection-name {
+    word-break: break-all;
+}
+
+.pc-sc-tooltip-icon {
+    min-width: 16px;
+}

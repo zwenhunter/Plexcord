@@ -1,0 +1,45 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2023 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { addServerListElement, removeServerListElement, ServerListItem, ServerListRenderPosition } from "@api/ServerList";
+import { SearchIcon } from "@components/Icons";
+import { PcDevs } from "@utils/constants";
+import definePlugin from "@utils/types";
+import { FluxDispatcher } from "@webpack/common";
+
+export default definePlugin({
+    name: "ServerSearch",
+    authors: [PcDevs.camila314, PcDevs.MutanPlex],
+    tags: ["servers", "organisation", "utility"],
+    description: () => t(plugin.serverSearch.description),
+
+    renderButton() {
+        return (
+            <ServerListItem
+                id="pc-searchbutton-container"
+                icon={SearchIcon}
+                tooltip={t(plugin.serverSearch.tooltip)}
+                onClick={() => {
+                    FluxDispatcher.dispatch({
+                        type: "QUICKSWITCHER_SHOW",
+                        query: "",
+                        queryMode: null
+                    });
+                }}
+            />
+        );
+    },
+
+    start() {
+        addServerListElement(ServerListRenderPosition.Above, this.renderButton);
+    },
+
+    stop() {
+        removeServerListElement(ServerListRenderPosition.Above, this.renderButton);
+    }
+});

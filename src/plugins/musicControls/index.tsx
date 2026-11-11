@@ -1,0 +1,117 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import "./styles.css";
+
+import { plugin, t } from "@api/i18n";
+import ErrorBoundary from "@components/ErrorBoundary";
+import { Devs, PcDevs } from "@utils/constants";
+import definePlugin from "@utils/types";
+
+import { settings, toggleHoverControls } from "./settings";
+import { migrateOldLyrics } from "./spotify/lyrics/api";
+import { SpotifyLyrics } from "./spotify/lyrics/components/lyrics";
+import { SpotifyPlayer } from "./spotify/PlayerComponent";
+import { TidalLyrics } from "./tidal/lyrics/components/lyrics";
+import { stopTidalLrcStore } from "./tidal/lyrics/providers/store";
+import { TidalPlayer } from "./tidal/TidalPlayer";
+import { stopTidalStore } from "./tidal/TidalStore";
+
+export default definePlugin({
+    name: "MusicControls",
+    description: () => t(plugin.musicControls.description),
+    authors: [Devs.Ven, Devs.afn, Devs.KraXen72, Devs.Av32000, Devs.nin0, Devs.thororen, PcDevs.vmohammad, Devs.Joona],
+    tags: ["media", "utility"],
+    settings,
+
+    patches: [
+        {
+            find: "#{intl::USER_PROFILE_ACCOUNT_POPOUT_BUTTON_A11Y_LABEL}",
+            replacement: {
+                // react.jsx)(AccountPanel, { ..., showTaglessAccountPanel: blah })
+                match: /(?<=\i\.jsxs?\)\()(\i),{(?=[^}]*?userTag:\i,occluded:)/,
+                // react.jsx(WrapperComponent, { PlexcordOriginal: AccountPanel, ...
+                replace: "$self.PanelWrapper,{PlexcordOriginal:$1,"
+            },
+        },
+        {
+            find: ".PLAYER_DEVICES",
+            replacement: [{
+                // Adds POST and a Marker to the SpotifyAPI (so we can easily find it)
+                match: /get:(\i)\.bind\(null,(\i\.\i)\.get\)/,
+                replace: "post:$1.bind(null,$2.post),vcSpotifyMarker:1,$&"
+            },
+            {
+                // Spotify Connect API returns status 202 instead of 204 when skipping tracks.
+                // Discord rejects 202 which causes the request to send twice. This patch prevents this.
+                match: /202===\i\.status/,
+                replace: "false",
+            }]
+        },
+        {
+            find: 'repeat:"off"!==',
+            replacement: [
+                {
+                    // Discord doesn't give you shuffle state and the repeat kind, only a boolean
+                    match: /repeat:"off"!==(\i),/,
+                    replace: "shuffle:arguments[2]?.shuffle_state??false,actual_repeat:$1,$&"
+                },
+                {
+                    match: /(?<=artists.filter\(\i=>).{0,10}\i\.id\)&&/,
+                    replace: ""
+                }
+            ]
+        },
+    ],
+
+    PanelWrapper({ PlexcordOriginal, ...props }) {
+        const { showTidalControls, showTidalLyrics, showSpotifyLyrics, showSpotifyControls, lyricsPosition } = settings.store;
+        return (
+            <>
+                <ErrorBoundary
+                    fallback={() => (
+                        <div className="pc-tidal-fallback">
+                            <p>{t(plugin.musicControls.error.failed)}</p>
+                            <p>{t(plugin.musicControls.error.checkConsole)}</p>
+                        </div>
+                    )}
+                >
+                    {showTidalLyrics && lyricsPosition === "above" && <TidalLyrics />}
+                    {showTidalControls && <TidalPlayer />}
+                    {showTidalLyrics && lyricsPosition === "below" && <TidalLyrics />}
+                    {showSpotifyLyrics && lyricsPosition === "above" && <SpotifyLyrics />}
+                    {showSpotifyControls && <SpotifyPlayer />}
+                    {showSpotifyLyrics && lyricsPosition === "below" && <SpotifyLyrics />}
+                </ErrorBoundary>
+
+                <PlexcordOriginal {...props} />
+            </>
+        );
+    },
+
+    async start() {
+        await migrateOldLyrics();
+        toggleHoverControls(settings.store.hoverControls);
+    },
+
+    stop() {
+        stopTidalLrcStore();
+        stopTidalStore();
+    },
+});

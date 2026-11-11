@@ -1,0 +1,49 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { plugin, t } from "@api/i18n";
+import { PcDevs } from "@utils/constants";
+import { getUserAvatarUrl } from "@utils/misc";
+import definePlugin from "@utils/types";
+import { ChannelRTCStore, ChannelStore, UserStore, VoiceStateStore } from "@webpack/common";
+
+import style from "./style.css?managed";
+
+export default definePlugin({
+    name: "FullVCPFP",
+    description: () => t(plugin.fullVCPFP.description),
+    tags: ["voice", "appearance", "customisation"],
+    authors: [PcDevs.mochienya],
+    managedStyle: style,
+    patches: [
+        {
+            find: "\"data-selenium-video-tile\":",
+            replacement: {
+                match: /(?<=function(?: \i)?\((\i)\)\{)/,
+                replace: "Object.assign($1.style=$1.style||{},$self.getVoiceBackgroundStyles($1));",
+            }
+        },
+    ],
+
+    getVoiceBackgroundStyles({ className, participantUserId }: { className?: string; participantUserId?: string; }) {
+        if (!className?.includes("tile") || !participantUserId) return;
+
+        const user = UserStore.getUser(participantUserId);
+        if (!user) return;
+
+        const channelId = VoiceStateStore.getVoiceStateForUser(participantUserId)?.channelId;
+        if (!channelId) return;
+
+        const guildId = ChannelStore.getChannel(channelId)?.guild_id;
+        const isSpeaking = ChannelRTCStore.getSpeakingParticipants(channelId).some(p => p.user.id === participantUserId && p.speaking);
+        const avatarUrl = getUserAvatarUrl(user, guildId, isSpeaking, 1024);
+
+        return {
+            "--full-res-avatar": `url(${avatarUrl})`
+        };
+    },
+});

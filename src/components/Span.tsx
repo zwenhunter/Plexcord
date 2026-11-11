@@ -1,0 +1,18 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2025 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ * SPDX-License-Identifier: GPL-3.0-or-later
+ */
+
+import { Text, type TextProps } from "./Text";
+
+export type SpanProps = TextProps<"span">;
+
+export function Span({ children, size = "sm", weight = "normal", ...restProps }: SpanProps) {
+    return (
+        <Text tag="span" size={size} weight={weight} {...restProps}>
+            {children}
+        </Text>
+    );
+}

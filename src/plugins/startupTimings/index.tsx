@@ -1,0 +1,47 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { plugin, t } from "@api/i18n";
+import { ClockIcon } from "@components/index";
+import SettingsPlugin from "@plugins/_core/settings";
+import { Devs } from "@utils/constants";
+import { removeFromArray } from "@utils/misc";
+import definePlugin from "@utils/types";
+
+import StartupTimingPage from "./StartupTimingPage";
+
+export default definePlugin({
+    name: "StartupTimings",
+    description: () => t(plugin.startupTimings.description),
+    authors: [Devs.Megu],
+    tags: ["developers", "utility"],
+
+    start() {
+
+        SettingsPlugin.customEntries.push({
+            key: "plexcord_startup_timings",
+            title: t(plugin.startupTimings.modal.title),
+            Component: StartupTimingPage,
+            Icon: ClockIcon
+        });
+    },
+    stop() {
+        removeFromArray(SettingsPlugin.customEntries, e => e.key === "plexcord_startup_timings");
+    },
+});

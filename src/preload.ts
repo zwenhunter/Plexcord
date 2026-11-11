@@ -1,0 +1,41 @@
+/*
+ * Plexcord, a modification for Discord's desktop app
+ * Copyright (c) 2022 Vendicated and contributors
+ * Copyright (c) 2025 MutanPlex
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*/
+
+import { debounce } from "@shared/debounce";
+import { IpcEvents } from "@shared/IpcEvents";
+import { contextBridge, webFrame } from "electron/renderer";
+
+import PlexcordNative, { invoke, sendSync } from "./PlexcordNative";
+
+// Monaco popout
+if (location.href === DESKTOP_MONACO_EDITOR_URL) {
+    contextBridge.exposeInMainWorld("setCss", debounce(PlexcordNative.quickCss.set));
+    contextBridge.exposeInMainWorld("getCurrentCss", PlexcordNative.quickCss.get);
+    contextBridge.exposeInMainWorld("getTheme", PlexcordNative.quickCss.getEditorTheme);
+}
+// Discord
+else {
+    contextBridge.exposeInMainWorld("PlexcordNative", PlexcordNative);
+    invoke(IpcEvents.INIT_FILE_WATCHERS);
+    if (IS_DISCORD_DESKTOP) {
+        webFrame.executeJavaScript(sendSync<string>(IpcEvents.PRELOAD_GET_RENDERER_JS));
+        // Not supported in sandboxed preload scripts but Discord doesn't support it either so who cares
+        require(process.env.DISCORD_PRELOAD!);
+    }
+}
